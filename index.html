@@ -157,12 +157,46 @@
     <!-- Start Overlay (Ook nodig om Audio Context te starten) -->
     <div id="start-screen" class="absolute inset-0 bg-gray-900 bg-opacity-95 z-50 flex flex-col items-center justify-center p-4 text-center">
         <h1 class="text-5xl md:text-7xl font-bold mb-4 text-green-400 drop-shadow-lg">🧪 Lab Match ⚗️</h1>
-        <p class="text-lg md:text-xl text-gray-300 mb-8 max-w-lg">
-            Sleep de reageerbuisjes met scheikundige symbolen naar de erlenmeyers met de juiste Nederlandse naam. Maak je een fout? Dan ontploft de boel!
-        </p>
-        <button id="start-btn" class="bg-green-500 hover:bg-green-400 text-gray-900 font-bold py-4 px-8 rounded-full text-2xl shadow-lg transition-transform transform hover:scale-110">
-            Start Spel
-        </button>
+        
+        <!-- Intro & Start Knop -->
+        <div id="intro-container" class="flex flex-col items-center z-10">
+            <p class="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl">
+                Welkom in het lab! Sleep de reageerbuisjes naar de juiste erlenmeyers. Maak je een fout? Dan ontploft de boel!
+            </p>
+            <button id="main-start-btn" class="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-12 rounded-full text-2xl shadow-[0_0_20px_rgba(34,197,94,0.5)] transition-transform transform hover:scale-110 animate-pulse">
+                START
+            </button>
+        </div>
+
+        <!-- Level Selectie (Initieel verborgen) -->
+        <div id="level-selection" class="hidden flex-col items-center z-10 mt-4">
+            <p class="text-2xl text-gray-300 mb-6 font-bold">Kies je niveau!</p>
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Niveau 1: Beginner -->
+                <button class="level-btn group relative flex flex-col items-center p-6 w-48 bg-gray-800 border-2 border-green-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] cursor-pointer" data-level="0">
+                    <div class="absolute inset-0 bg-green-500 opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity"></div>
+                    <span class="text-5xl mb-3 group-hover:animate-bounce">🧪</span>
+                    <span class="text-green-400 font-bold text-xl uppercase tracking-widest">Niveau 1</span>
+                    <span class="text-gray-300 text-sm mt-2 font-semibold">Beginner</span>
+                </button>
+
+                <!-- Niveau 2: Gevorderd -->
+                <button class="level-btn group relative flex flex-col items-center p-6 w-48 bg-gray-800 border-2 border-yellow-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.6)] cursor-pointer" data-level="1">
+                    <div class="absolute inset-0 bg-yellow-500 opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity"></div>
+                    <span class="text-5xl mb-3 group-hover:animate-bounce">🔬</span>
+                    <span class="text-yellow-400 font-bold text-xl uppercase tracking-widest">Niveau 2</span>
+                    <span class="text-gray-300 text-sm mt-2 font-semibold">Gevorderd</span>
+                </button>
+            
+                <!-- Niveau 3: Expert -->
+                <button class="level-btn group relative flex flex-col items-center p-6 w-48 bg-gray-800 border-2 border-red-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_30px_rgba(239,68,68,0.6)] cursor-pointer" data-level="2">
+                    <div class="absolute inset-0 bg-red-500 opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity"></div>
+                    <span class="text-5xl mb-3 group-hover:animate-pulse">⚗️</span>
+                    <span class="text-red-400 font-bold text-xl uppercase tracking-widest">Niveau 3</span>
+                    <span class="text-gray-300 text-sm mt-2 font-semibold">Expert</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Game Over Overlay -->
@@ -170,18 +204,42 @@
         <h1 class="text-6xl font-bold mb-4 text-white drop-shadow-lg">KABOEM!</h1>
         <p class="text-2xl text-gray-200 mb-8">Je veiligheidsbrillen zijn op...</p>
         <p class="text-xl text-gray-300 mb-8">Eindscore: <span id="final-score" class="font-bold text-yellow-400">0</span></p>
-        <button id="restart-btn" class="bg-white hover:bg-gray-200 text-red-900 font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
-            Probeer Opnieuw
-        </button>
+        <div class="flex flex-col md:flex-row gap-4">
+            <button id="restart-btn" class="bg-white hover:bg-gray-200 text-red-900 font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
+                Probeer Opnieuw
+            </button>
+            <button id="menu-btn-loss" class="bg-red-950 hover:bg-red-800 border-2 border-red-500 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
+                Ander Niveau
+            </button>
+        </div>
     </div>
 
     <!-- Level Complete Overlay -->
     <div id="level-complete-screen" class="absolute inset-0 bg-blue-900 bg-opacity-95 z-50 flex flex-col items-center justify-center hidden">
         <h1 class="text-6xl font-bold mb-4 text-white drop-shadow-lg">Netjes!</h1>
         <p class="text-2xl text-gray-200 mb-8">Level voltooid. Maak je klaar voor de volgende reacties.</p>
-        <button id="next-level-btn" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
-            Volgend Level
-        </button>
+        <div class="flex flex-col md:flex-row gap-4">
+            <button id="next-level-btn" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
+                Volgend Level
+            </button>
+            <button id="menu-btn-win" class="bg-blue-950 hover:bg-blue-800 border-2 border-blue-500 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
+                Ander Niveau
+            </button>
+        </div>
+    </div>
+
+    <!-- Level Complete Overlay -->
+    <div id="level-complete-screen" class="absolute inset-0 bg-blue-900 bg-opacity-95 z-50 flex flex-col items-center justify-center hidden">
+        <h1 class="text-6xl font-bold mb-4 text-white drop-shadow-lg">Netjes!</h1>
+        <p class="text-2xl text-gray-200 mb-8">Level voltooid. Maak je klaar voor de volgende reacties.</p>
+        <div class="flex flex-col md:flex-row gap-4">
+            <button id="next-level-btn" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
+                Volgend Level
+            </button>
+            <button id="menu-btn-win" class="bg-blue-950 hover:bg-blue-800 border-2 border-blue-500 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
+                Ander Protocol
+            </button>
+        </div>
     </div>
 
     <!-- Header UI -->
@@ -270,6 +328,10 @@
         const uiLives = document.getElementById('ui-lives');
         const finalScoreSpan = document.getElementById('final-score');
         
+        const introContainer = document.getElementById('intro-container');
+        const levelSelection = document.getElementById('level-selection');
+        const mainStartBtn = document.getElementById('main-start-btn');
+
         const tubeRack = document.getElementById('tube-rack');
         const flaskTable = document.getElementById('flask-table');
 
@@ -336,30 +398,60 @@
 
         // --- STREAMING_CHUNK: Game Flow (Start, Render, Reset) ---
 
-        document.getElementById('start-btn').addEventListener('click', async () => {
-            await Tone.start(); // Vereist door browsers
-            initAudio();
-            startScreen.classList.add('hidden');
-            resetGame();
+        // Start scherm logica
+        mainStartBtn.addEventListener('click', async () => {
+            if (Tone.context.state !== 'running') {
+                await Tone.start(); // Vereist door browsers
+            }
+            if (!synth) initAudio();
+            
+            // Verberg intro, toon level keuze
+            introContainer.classList.add('hidden');
+            levelSelection.classList.remove('hidden');
+            levelSelection.classList.add('flex');
+        });
+
+        // Event listeners voor de Protocol (level) knoppen
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const selectedLevel = parseInt(e.currentTarget.dataset.level);
+                startScreen.classList.add('hidden');
+                startNewGame(selectedLevel);
+            });
         });
 
         document.getElementById('restart-btn').addEventListener('click', () => {
             gameOverScreen.classList.add('hidden');
-            resetGame();
+            startNewGame(currentLevelIndex); // Herstart huidige level
         });
 
         document.getElementById('next-level-btn').addEventListener('click', () => {
             levelCompleteScreen.classList.add('hidden');
             currentLevelIndex++;
             if (currentLevelIndex >= levels.length) {
-                // Game uitgespeeld, herstart met behoud van score maar sneller/moeilijker (of gewoon loop)
-                currentLevelIndex = 0; 
+                currentLevelIndex = 0; // Terug naar begin als alles is uitgespeeld
             }
-            startLevel();
+            startLevel(); // Behoud score en levens, start alleen volgend level bord
         });
 
-        function resetGame() {
-            currentLevelIndex = 0;
+        // Terug naar menu knoppen
+        const returnToMenu = () => {
+            gameOverScreen.classList.add('hidden');
+            levelCompleteScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            
+            // Zet direct het level-selectie scherm klaar
+            introContainer.classList.add('hidden');
+            levelSelection.classList.remove('hidden');
+            levelSelection.classList.add('flex');
+        };
+        
+        document.getElementById('menu-btn-loss').addEventListener('click', returnToMenu);
+        document.getElementById('menu-btn-win').addEventListener('click', returnToMenu);
+
+        // Start een compleet nieuw spel (reset score en levens)
+        function startNewGame(levelIndex) {
+            currentLevelIndex = levelIndex;
             score = 0;
             lives = 3;
             updateUI();
