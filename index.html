@@ -197,6 +197,29 @@
                 </button>
             </div>
         </div>
+
+        <!-- Hoeveelheid Selectie (Initieel verborgen, verschijnt na niveau keuze) -->
+        <div id="element-selection" class="hidden flex-col items-center z-10 mt-4">
+            <p class="text-2xl text-gray-300 mb-6 font-bold">Hoeveel elementen wil je oefenen?</p>
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- 4 elementen -->
+                <button class="amount-btn group relative flex flex-col items-center p-6 w-32 bg-gray-800 border-2 border-cyan-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] cursor-pointer" data-amount="4">
+                    <span class="text-4xl mb-2 text-cyan-400 font-bold">4</span>
+                    <span class="text-gray-300 text-sm font-semibold">Kort</span>
+                </button>
+                <!-- 6 elementen -->
+                <button class="amount-btn group relative flex flex-col items-center p-6 w-32 bg-gray-800 border-2 border-purple-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] cursor-pointer" data-amount="6">
+                    <span class="text-4xl mb-2 text-purple-400 font-bold">6</span>
+                    <span class="text-gray-300 text-sm font-semibold">Medium</span>
+                </button>
+                <!-- 8 elementen -->
+                <button class="amount-btn group relative flex flex-col items-center p-6 w-32 bg-gray-800 border-2 border-pink-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.6)] cursor-pointer" data-amount="8">
+                    <span class="text-4xl mb-2 text-pink-400 font-bold">8</span>
+                    <span class="text-gray-300 text-sm font-semibold">Lang</span>
+                </button>
+            </div>
+            <button id="back-to-levels-btn" class="mt-8 text-gray-400 hover:text-white underline font-semibold transition-colors">Terug naar niveaus</button>
+        </div>
     </div>
 
     <!-- Game Over Overlay -->
@@ -292,25 +315,38 @@
                 { sym: 'O', name: 'Zuurstof', color: '#00F0FF' }, // Fel Cyaan
                 { sym: 'C', name: 'Koolstof', color: '#FF3366' }, // Vrolijk Kersenroze
                 { sym: 'Ne', name: 'Neon', color: '#A8FF3E' },    // Limoengroen
-                { sym: 'Al', name: 'Aluminium', color: '#B088FF' } // Zacht Paars
+                { sym: 'Al', name: 'Aluminium', color: '#B088FF' }, // Zacht Paars
+                { sym: 'H', name: 'Waterstof', color: '#FF99CC' }, // Lichtroze
+                { sym: 'He', name: 'Helium', color: '#66FFFF' },   // Lichtblauw
+                { sym: 'N', name: 'Stikstof', color: '#FFB366' },  // Zacht Oranje
+                { sym: 'P', name: 'Fosfor', color: '#CCFF66' }     // Geelgroen
             ],
             // Level 2: Latijnse afwijkingen (Kleuren verraden niets meer)
             [
                 { sym: 'Fe', name: 'IJzer', color: '#FFAA00' },   // Zonnig Oranje
                 { sym: 'Au', name: 'Goud', color: '#20E3B2' },    // Muntgroen (zeker geen goudkleur!)
                 { sym: 'Ag', name: 'Zilver', color: '#FF61D2' },  // Zuurstok Roze
-                { sym: 'Na', name: 'Natrium', color: '#4A90E2' }  // Helder Blauw
+                { sym: 'Na', name: 'Natrium', color: '#4A90E2' }, // Helder Blauw
+                { sym: 'K', name: 'Kalium', color: '#D279FF' },   // Lavendel
+                { sym: 'Cu', name: 'Koper', color: '#FF8C66' },   // Zalmroze
+                { sym: 'S', name: 'Zwavel', color: '#FFFF99' },   // Zachtgeel
+                { sym: 'Sb', name: 'Antimoon', color: '#66FFCC' } // Mintcyaan
             ],
             // Level 3: Moeilijker
             [
                 { sym: 'Pb', name: 'Lood', color: '#00FF9D' },    // Neon Zeegroen
                 { sym: 'Hg', name: 'Kwik', color: '#9D4EDD' },    // Diep Vrolijk Paars
                 { sym: 'W', name: 'Wolfram', color: '#FFD700' },  // Goudgeel
-                { sym: 'Sn', name: 'Tin', color: '#FF8C42' }      // Perzik/Koraal
+                { sym: 'Sn', name: 'Tin', color: '#FF8C42' },     // Perzik/Koraal
+                { sym: 'Pt', name: 'Platina', color: '#E6E6E6' }, // Witgrijs
+                { sym: 'U', name: 'Uranium', color: '#39FF14' },  // Neongroen
+                { sym: 'Co', name: 'Kobalt', color: '#3333FF' },  // Felblauw
+                { sym: 'I', name: 'Jodium', color: '#B300B3' }    // Donker Magenta
             ]
         ];
 
         let currentLevelIndex = 0;
+        let currentElementCount = 4; // Nieuwe variabele om bij te houden hoeveel we er spelen
         let score = 0;
         let lives = 3;
         let matchedInLevel = 0;
@@ -330,6 +366,7 @@
         
         const introContainer = document.getElementById('intro-container');
         const levelSelection = document.getElementById('level-selection');
+        const elementSelection = document.getElementById('element-selection'); // Nieuw
         const mainStartBtn = document.getElementById('main-start-btn');
 
         const tubeRack = document.getElementById('tube-rack');
@@ -414,15 +451,38 @@
         // Event listeners voor de Protocol (level) knoppen
         document.querySelectorAll('.level-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const selectedLevel = parseInt(e.currentTarget.dataset.level);
-                startScreen.classList.add('hidden');
-                startNewGame(selectedLevel);
+                currentLevelIndex = parseInt(e.currentTarget.dataset.level);
+                
+                // Verberg de level selectie, toon de hoeveelheid selectie
+                levelSelection.classList.remove('flex');
+                levelSelection.classList.add('hidden');
+                
+                elementSelection.classList.remove('hidden');
+                elementSelection.classList.add('flex');
             });
+        });
+
+        // Event listeners voor de Hoeveelheid knoppen
+        document.querySelectorAll('.amount-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const amount = parseInt(e.currentTarget.dataset.amount);
+                startScreen.classList.add('hidden');
+                startNewGame(currentLevelIndex, amount);
+            });
+        });
+
+        // Terug knop naar niveaus
+        document.getElementById('back-to-levels-btn').addEventListener('click', () => {
+            elementSelection.classList.remove('flex');
+            elementSelection.classList.add('hidden');
+            
+            levelSelection.classList.remove('hidden');
+            levelSelection.classList.add('flex');
         });
 
         document.getElementById('restart-btn').addEventListener('click', () => {
             gameOverScreen.classList.add('hidden');
-            startNewGame(currentLevelIndex); // Herstart huidige level
+            startNewGame(currentLevelIndex, currentElementCount); // Herstart huidige level met dezelfde hoeveelheid
         });
 
         document.getElementById('next-level-btn').addEventListener('click', () => {
@@ -442,6 +502,12 @@
             
             // Zet direct het level-selectie scherm klaar
             introContainer.classList.add('hidden');
+            
+            // Verberg eventuele element-selectie
+            elementSelection.classList.remove('flex');
+            elementSelection.classList.add('hidden');
+            
+            // Toon level selectie
             levelSelection.classList.remove('hidden');
             levelSelection.classList.add('flex');
         };
@@ -450,8 +516,9 @@
         document.getElementById('menu-btn-win').addEventListener('click', returnToMenu);
 
         // Start een compleet nieuw spel (reset score en levens)
-        function startNewGame(levelIndex) {
+        function startNewGame(levelIndex, amount) {
             currentLevelIndex = levelIndex;
+            currentElementCount = amount;
             score = 0;
             lives = 3;
             updateUI();
@@ -540,7 +607,10 @@
             flaskTable.innerHTML = '';
             updateUI();
 
-            const levelData = levels[currentLevelIndex];
+            // Pak willekeurige elementen uit het geselecteerde level
+            const fullLevelData = shuffleArray(levels[currentLevelIndex]);
+            // Snijd de array af op de gekozen hoeveelheid (4, 6 of 8)
+            const levelData = fullLevelData.slice(0, currentElementCount);
             
             // Maak reageerbuisjes (geshuffeld)
             const tubes = shuffleArray(levelData);
@@ -885,7 +955,8 @@
         }
 
         function checkLevelEnd() {
-            if (matchedInLevel === levels[currentLevelIndex].length) {
+            // Nu controleren we of de gematchte elementen gelijk is aan de gekozen hoeveelheid
+            if (matchedInLevel === currentElementCount) {
                 setTimeout(() => {
                     levelCompleteScreen.classList.remove('hidden');
                 }, 500);
