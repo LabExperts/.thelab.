@@ -265,11 +265,35 @@
         </div>
     </div>
 
+    <!-- Bevestiging Stoppen Overlay (Nieuw!) -->
+    <div id="confirm-quit-screen" class="absolute inset-0 bg-gray-900 bg-opacity-95 z-[60] flex flex-col items-center justify-center hidden">
+        <div class="bg-gray-800 border-2 border-gray-600 rounded-3xl p-8 md:p-12 max-w-lg text-center shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+            <span class="text-6xl mb-4 block">⚠️</span>
+            <h2 class="text-3xl md:text-4xl font-bold mb-4 text-white">Even wachten!</h2>
+            <p class="text-xl text-gray-300 mb-8">Weet je zeker dat je wilt stoppen? Je huidige score en voortgang gaan dan verloren.</p>
+            <div class="flex flex-col md:flex-row gap-4 justify-center">
+                <button id="cancel-quit-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg transition-transform transform hover:scale-105">
+                    Nee, ga door
+                </button>
+                <button id="confirm-quit-btn" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-full text-lg shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-transform transform hover:scale-105">
+                    Ja, stoppen
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Header UI -->
     <header class="w-full p-4 bg-gray-800 shadow-md flex justify-between items-center z-10 border-b-4 border-gray-700">
-        <div class="flex flex-col">
-            <span class="text-gray-400 text-sm font-bold uppercase tracking-wider">Level <span id="ui-level">1</span></span>
-            <span class="text-2xl font-bold text-yellow-400">Score: <span id="ui-score">0</span></span>
+        <div class="flex items-center gap-4 md:gap-8">
+            <!-- Nieuwe Terug naar Menu knop tijdens het spelen -->
+            <button id="in-game-back-btn" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-200 hover:text-white rounded-full p-2 md:px-4 md:py-2 flex items-center gap-2 transition-colors shadow-sm cursor-pointer">
+                <span class="text-2xl leading-none -mt-1">←</span>
+                <span class="hidden md:inline font-bold text-sm uppercase tracking-wider">Menu</span>
+            </button>
+            <div class="flex flex-col">
+                <span class="text-gray-400 text-sm font-bold uppercase tracking-wider">Level <span id="ui-level">1</span></span>
+                <span class="text-2xl font-bold text-yellow-400">Score: <span id="ui-score">0</span></span>
+            </div>
         </div>
         <div class="flex flex-col items-end">
             <span class="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">Veiligheid</span>
@@ -283,25 +307,25 @@
     <main class="flex-1 flex flex-col md:flex-row relative p-4 gap-8">
         
         <!-- Reageerbuis Rek (Links/Boven) -->
-        <section class="w-full md:w-1/3 h-1/3 md:h-full flex flex-col items-center justify-center bg-gray-800 rounded-2xl shadow-inner border border-gray-700 p-4 relative">
-            <h2 class="text-gray-500 font-bold uppercase tracking-widest mb-4 absolute top-4">Reageerbuisjes</h2>
-            <!-- Planken / Houder -->
-            <div class="w-full max-w-sm h-4 bg-gray-600 rounded-full absolute bottom-[15%] md:bottom-[25%] shadow-md"></div>
+        <section class="w-full md:w-1/3 h-1/3 md:h-full flex flex-col items-center justify-center bg-gray-800 rounded-2xl shadow-inner border border-gray-700 p-4 relative overflow-hidden">
+            <h2 class="text-gray-500 font-bold uppercase tracking-widest mb-4 absolute top-4 z-20">Reageerbuisjes</h2>
+            <!-- Planken / Houder (decoratief) -->
+            <div class="w-full max-w-sm h-4 bg-gray-600 rounded-full absolute bottom-4 md:bottom-8 shadow-md opacity-50 pointer-events-none"></div>
             
-            <div id="tube-rack" class="flex flex-row flex-wrap md:flex-col md:flex-nowrap gap-4 md:gap-8 justify-center items-center w-full z-10 h-full pb-10 md:pb-0">
+            <div id="tube-rack" class="flex flex-row flex-wrap gap-4 md:gap-6 justify-center items-center content-center w-full h-full z-10 pt-8">
                 <!-- Reageerbuisjes worden hier gegenereerd -->
             </div>
         </section>
 
         <!-- Werktafel / Erlenmeyers (Rechts/Onder) -->
-        <section class="w-full md:w-2/3 h-2/3 md:h-full flex flex-col items-center justify-end md:justify-center bg-gray-900 rounded-2xl shadow-2xl border border-gray-700 relative overflow-hidden">
-            <h2 class="text-gray-600 font-bold uppercase tracking-widest mb-4 absolute top-4">Mengtafel</h2>
+        <section class="w-full md:w-2/3 h-2/3 md:h-full flex flex-col items-center justify-center bg-gray-900 rounded-2xl shadow-2xl border border-gray-700 relative overflow-hidden">
+            <h2 class="text-gray-600 font-bold uppercase tracking-widest mb-4 absolute top-4 z-20">Mengtafel</h2>
             
             <!-- Tafel graphics -->
             <div class="absolute bottom-0 w-full h-1/4 bg-gradient-to-t from-gray-800 to-transparent opacity-50 pointer-events-none"></div>
-            <div class="absolute bottom-10 w-11/12 h-2 bg-gray-700 rounded-full blur-[2px] pointer-events-none"></div>
+            <div class="absolute bottom-4 md:bottom-8 w-11/12 h-2 bg-gray-700 rounded-full blur-[2px] pointer-events-none opacity-50"></div>
 
-            <div id="flask-table" class="flex flex-row flex-wrap gap-8 justify-center items-end w-full pb-12 z-10">
+            <div id="flask-table" class="flex flex-row flex-wrap gap-6 md:gap-10 justify-center items-center content-center w-full h-full pt-8 z-10">
                 <!-- Erlenmeyers worden hier gegenereerd -->
             </div>
         </section>
@@ -359,6 +383,7 @@
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
         const levelCompleteScreen = document.getElementById('level-complete-screen');
+        const confirmQuitScreen = document.getElementById('confirm-quit-screen'); // Nieuw
         const uiScore = document.getElementById('ui-score');
         const uiLevel = document.getElementById('ui-level');
         const uiLives = document.getElementById('ui-lives');
@@ -496,8 +521,18 @@
 
         // Terug naar menu knoppen
         const returnToMenu = () => {
+            // Verberg alle overlays
             gameOverScreen.classList.add('hidden');
             levelCompleteScreen.classList.add('hidden');
+            confirmQuitScreen.classList.add('hidden'); // Nieuw
+            
+            // Leeg het bord zodat er geen half-gespeeld spel staat
+            tubeRack.innerHTML = '';
+            flaskTable.innerHTML = '';
+            isAnimating = false; // Reset animatie blokkade
+            if (draggedTube) draggedTube.remove(); // Verwijder buisje als we tijdens het slepen op terug klikken
+            
+            // Toon start scherm
             startScreen.classList.remove('hidden');
             
             // Zet direct het level-selectie scherm klaar
@@ -514,6 +549,21 @@
         
         document.getElementById('menu-btn-loss').addEventListener('click', returnToMenu);
         document.getElementById('menu-btn-win').addEventListener('click', returnToMenu);
+        
+        // Nieuwe logica voor de terugknop in de game
+        document.getElementById('in-game-back-btn').addEventListener('click', () => {
+            confirmQuitScreen.classList.remove('hidden');
+        });
+
+        // Knoppen in de bevestigings-popup
+        document.getElementById('cancel-quit-btn').addEventListener('click', () => {
+            confirmQuitScreen.classList.add('hidden');
+        });
+
+        document.getElementById('confirm-quit-btn').addEventListener('click', () => {
+            confirmQuitScreen.classList.add('hidden');
+            returnToMenu();
+        });
 
         // Start een compleet nieuw spel (reset score en levens)
         function startNewGame(levelIndex, amount) {
