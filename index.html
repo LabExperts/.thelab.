@@ -45,6 +45,12 @@
             100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
         }
         
+        .bubble {
+            position: absolute; border-radius: 50%; pointer-events: none; z-index: 6;
+            background: rgba(255,255,255,0.75); box-shadow: 0 0 4px rgba(255,255,255,0.6);
+            animation: bubbleUp 0.9s ease-out forwards;
+        }
+
         /* Nieuwe Cartoon Boom Animatie */
         @keyframes boomScale {
             0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); opacity: 1; }
@@ -1283,7 +1289,7 @@
                     <!-- Achterkant glas -->
                     <rect x="5" y="5" width="30" height="90" rx="15" fill="#f0fdfa" opacity="0.3" stroke="#94a3b8" stroke-width="2"/>
                     <!-- Vloeistof -->
-                    <rect x="7" y="40" width="26" height="53" rx="12" fill="${color}" opacity="0.9"/>
+                    <rect class="tube-liquid" x="7" y="40" width="26" height="53" rx="12" fill="${color}" opacity="0.9"/>
                     <!-- Reflectie -->
                     <rect x="10" y="10" width="6" height="75" rx="3" fill="#ffffff" opacity="0.4"/>
                     <!-- Dop/Rand -->
@@ -1295,7 +1301,9 @@
             </div>`;
         }
 
+        let flesTeller = 0; // Elke erlenmeyer krijgt een eigen clipPath-id
         function createFlaskSVG(name) {
+            const clipId = `vul-${flesTeller++}`;
             return `
             <div class="relative flex flex-col items-center">
                 <svg width="80" height="110" viewBox="0 0 100 120" class="drop-shadow-xl flask-svg transition-colors duration-500">
@@ -1305,9 +1313,13 @@
                             <stop offset="20%" stop-color="#ffffff" stop-opacity="0.6" />
                             <stop offset="100%" stop-color="#ffffff" stop-opacity="0.1" />
                         </linearGradient>
+                        <!-- Masker: alleen het deel onder deze rechthoek is zichtbaar → vult van onder naar boven -->
+                        <clipPath id="${clipId}">
+                            <rect class="fill-clip" x="0" y="115" width="100" height="0"/>
+                        </clipPath>
                     </defs>
                     <!-- Vloeistof pad (standaard doorzichtig/leeg) -->
-                    <path class="liquid-fill" d="M 40 40 L 60 40 L 85 100 A 15 15 0 0 1 70 115 L 30 115 A 15 15 0 0 1 15 100 Z" fill="transparent" opacity="0.8"/>
+                    <path class="liquid-fill" clip-path="url(#${clipId})" d="M 40 40 L 60 40 L 85 100 A 15 15 0 0 1 70 115 L 30 115 A 15 15 0 0 1 15 100 Z" fill="transparent" opacity="0.8"/>
                     <!-- Glas omtrek -->
                     <path d="M 35 5 L 65 5 L 65 10 L 55 10 L 55 40 L 85 100 A 15 15 0 0 1 70 115 L 30 115 A 15 15 0 0 1 15 100 L 45 40 L 45 10 L 35 10 Z" fill="url(#glass)" stroke="#cbd5e1" stroke-width="3"/>
                     <!-- Maatstreepjes -->
@@ -1492,9 +1504,44 @@
 
         // --- STREAMING_CHUNK: Giet animatie en resultaat ---
 
+        // Kleine hulpfunctie: laat SVG-attributen (x, y, width, height...) soepel veranderen
+        function animeer(el, naar, duur, klaar) {
+            const van = {};
+            for (const k in naar) van[k] = parseFloat(el.getAttribute(k));
+            const start = performance.now();
+            function stap(nu) {
+                const t = Math.min(1, (nu - start) / duur);
+                const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease-in-out
+                for (const k in naar) el.setAttribute(k, van[k] + (naar[k] - van[k]) * e);
+                if (t < 1) requestAnimationFrame(stap);
+                else if (klaar) klaar();
+            }
+            requestAnimationFrame(stap);
+        }
+
+        // Belletjes die opstijgen in de erlenmeyer
+        function maakBubbels(flask) {
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    const b = document.createElement('div');
+                    b.className = 'bubble';
+                    const maat = 4 + Math.random() * 6;
+                    b.style.width = b.style.height = maat + 'px';
+                    b.style.left = (38 + Math.random() * 24) + '%';
+                    b.style.top = (48 + Math.random() * 12) + '%';
+                    flask.appendChild(b);
+                    setTimeout(() => b.remove(), 950);
+                }, i * 70);
+            }
+        }
+
         function processDrop(tube, flask) {
             isAnimating = true;
             const flaskRect = flask.getBoundingClientRect();
+            const kleur = tube.dataset.color;
+            const buisVloeistof = tube.querySelector('.tube-liquid');
+            const flesVloeistof = flask.querySelector('.liquid-fill');
+            const vulMasker = flask.querySelector('.fill-clip');
             
             // 1. Positioneer buisje boven de fles
             tube.classList.add('snapping');
@@ -1502,25 +1549,38 @@
             tube.style.top = (flaskRect.top - tubeOriginRect.height + 20) + 'px';
 
             setTimeout(() => {
-                // 2. Kantel 90 graden om te gieten
+                // 2. Kantel om te gieten. De vloeistof loopt naar de opening
+                //    en ligt tegen de onderste wand van het schuine buisje.
                 tube.classList.remove('snapping');
                 tube.classList.add('pouring');
                 tube.style.transform = 'rotate(-100deg)';
+                animeer(buisVloeistof, { y: 8, width: 13, height: 60 }, 400);
 
-                // Voeg visuele straal toe aan de Erlenmeyer i.p.v. het buisje!
+                // Straal in de hals van de Erlenmeyer
                 const stream = document.createElement('div');
                 stream.className = 'flask-stream';
-                stream.style.backgroundColor = tube.dataset.color;
+                stream.style.backgroundColor = kleur;
                 flask.appendChild(stream);
-                
-                setTimeout(() => {
-                    stream.style.height = '60px'; // Stroomt naar beneden de fles in
-                }, 50);
+                setTimeout(() => { stream.style.height = '60px'; }, 250);
 
+                // 3. Buisje loopt leeg, Erlenmeyer loopt vol van onder naar boven
+                flesVloeistof.setAttribute('fill', kleur);
                 setTimeout(() => {
-                    // 3. Evalueer resultaat na gieten
-                    evaluateMatch(tube, flask);
-                }, 600); // Tijd voor giet animatie
+                    animeer(buisVloeistof, { height: 0 }, 550);
+                    animeer(vulMasker, { y: 58, height: 57 }, 600);
+                    maakBubbels(flask);
+                }, 380);
+
+                // 4. De laatste druppels vallen: de staart van de straal zakt de fles in
+                setTimeout(() => {
+                    stream.style.transition = 'top 0.25s ease-in, height 0.25s ease-in';
+                    stream.style.top = '40px';
+                    stream.style.height = '0px';
+                    setTimeout(() => stream.remove(), 260);
+                }, 900);
+
+                // 5. Evalueer resultaat na gieten
+                setTimeout(() => evaluateMatch(tube, flask), 1000);
 
             }, 400); // Tijd voor positionering
         }
@@ -1537,11 +1597,12 @@
                 matchedInLevel++;
                 registreerGoed(tube.dataset.symbol); // Telt mee voor je verzameling
                 
-                // Kleur fles
-                flaskSVG.setAttribute('fill', tube.dataset.color);
-                
                 // Activeer één van de 5 willekeurige feest effecten!
                 playRandomGoodEffect(flask, tube.dataset.color);
+
+                // Leeg buisje kantelt terug en verdwijnt
+                tube.style.transform = 'rotate(0deg) scale(0.5)';
+                tube.style.opacity = '0';
 
                 // Ruim op
                 setTimeout(() => {
@@ -1553,7 +1614,7 @@
                     
                     checkLevelEnd();
                     isAnimating = false;
-                }, 1000);
+                }, 900);
 
             } else {
                 // FOUT
@@ -1573,6 +1634,9 @@
                 setTimeout(() => {
                     flask.classList.remove('shake-explode');
                     flaskSVG.setAttribute('fill', 'transparent'); // Reset vloeistof
+                    const masker = flask.querySelector('.fill-clip');
+                    masker.setAttribute('y', 115);   // Erlenmeyer weer leeg
+                    masker.setAttribute('height', 0);
                     if(stream) stream.remove(); // Verwijder de straal
                     
                     if (lives <= 0) {
@@ -1582,6 +1646,8 @@
                         // Buisje terug naar rek
                         tube.style.transform = 'rotate(0deg)';
                         tube.classList.remove('pouring');
+                        // Buisje wordt weer gevuld voor een nieuwe poging
+                        animeer(tube.querySelector('.tube-liquid'), { x: 7, y: 40, width: 26, height: 53 }, 400);
                         snapBack(tube);
                         
                         // Hussel resterende buisjes in rekje voor extra stress
