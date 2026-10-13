@@ -216,13 +216,62 @@
             border-radius: 4px;
         }
 
+        /* --- Verzamelen & Eigen selectie --- */
+        /* Nog niet verzameld: grijs en gedimd (bij hover zie je hem wel even goed) */
+        .pt-locked:not(:hover):not(.pt-selected) { background-color: #2a3341; color: #7b8697; border-color: rgba(255,255,255,0.06); }
+        /* Ster = verzameld, geel bolletje = 1 keer goed (halverwege) */
+        .pt-star { position: absolute; top: 1px; right: 2px; font-size: 0.5rem; line-height: 1; }
+        .pt-halfvol:not(:hover) { filter: saturate(0.45) brightness(0.7); }
+        .pt-half { position: absolute; top: 3px; right: 3px; width: 5px; height: 5px; border-radius: 50%; background: #facc15; box-shadow: 0 0 4px #facc15; }
+        /* Geselecteerd voor eigen oefening */
+        .pt-selected { outline: 3px solid #22c55e; outline-offset: 1px; filter: none; opacity: 1; }
+        .pt-selected::after {
+            content: '✓'; position: absolute; top: -8px; left: -8px;
+            width: 16px; height: 16px; border-radius: 9999px;
+            background: #22c55e; color: white; font-size: 10px; font-weight: 900;
+            display: flex; align-items: center; justify-content: center; z-index: 2;
+        }
+
+        .chip {
+            padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 700;
+            border: 2px solid rgba(255,255,255,0.25); background: #1f2937; color: #e5e7eb;
+            transition: all 0.15s; cursor: pointer;
+        }
+        .chip:hover { border-color: #22c55e; transform: translateY(-2px); }
+        .chip.chip-active { background: #166534; border-color: #22c55e; color: white; }
+
+        .badge {
+            display: flex; align-items: center; gap: 0.35rem;
+            padding: 0.3rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700;
+            background: #1f2937; border: 2px solid #374151; color: #6b7280;
+        }
+        .badge.badge-earned { background: #422006; border-color: #facc15; color: #fde68a; box-shadow: 0 0 12px rgba(250,204,21,0.35); }
+        .badge .badge-icon { filter: grayscale(1); opacity: 0.5; }
+        .badge.badge-earned .badge-icon { filter: none; opacity: 1; }
+
+        /* Meldingen (toasts) voor nieuwe elementen en badges */
+        #melding-container { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 80; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+        .melding {
+            padding: 0.6rem 1.2rem; border-radius: 9999px; font-weight: 700; white-space: nowrap;
+            background: #14532d; border: 2px solid #4ade80; color: white;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            animation: meldingIn 0.35s ease-out, meldingUit 0.4s ease-in 2.6s forwards;
+        }
+        .melding.melding-badge { background: #713f12; border-color: #facc15; font-size: 1.1rem; }
+        .melding.melding-half { background: #1e3a5f; border-color: #60a5fa; }
+        .melding.melding-fout { background: #7f1d1d; border-color: #f87171; }
+        @keyframes meldingIn { from { transform: translateY(-20px) scale(0.8); opacity: 0; } to { transform: none; opacity: 1; } }
+        @keyframes meldingUit { to { transform: translateY(-10px); opacity: 0; } }
+
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col relative select-none">
 
     <!-- Start Overlay (Ook nodig om Audio Context te starten) -->
-    <div id="start-screen" class="absolute inset-0 bg-gray-900 bg-opacity-95 z-50 flex flex-col items-center justify-center p-4 text-center">
-        <h1 class="text-5xl md:text-7xl font-bold mb-4 text-green-400 drop-shadow-lg">🧪 Lab Match ⚗️</h1>
+    <div id="melding-container"></div>
+
+    <div id="start-screen" class="absolute inset-0 bg-gray-900 bg-opacity-95 z-50 flex flex-col items-center p-4 text-center overflow-y-auto">
+        <h1 class="text-5xl md:text-7xl font-bold mb-4 text-green-400 drop-shadow-lg mt-auto">🧪 Lab Match ⚗️</h1>
         
         <!-- Intro & Start Knop -->
         <div id="intro-container" class="flex flex-col items-center z-10">
@@ -234,19 +283,53 @@
             </button>
         </div>
 
-        <div id="periodic-table-screen" class="hidden flex-col items-center z-10 mt-4 w-full h-full max-h-[80vh]">
-            <h2 class="text-3xl text-gray-100 mb-2 font-bold drop-shadow-md">Periodiek Systeem der Elementen</h2>
-            <p class="text-sm text-gray-400 mb-4">Hover over de elementen om ze op te lichten. Bestudeer ze goed!</p>
-            
-            <div class="pt-wrapper stylish-scrollbar">
+        <div id="periodic-table-screen" class="hidden flex-col items-center z-10 mt-2 w-full">
+            <h2 id="pt-title" class="text-3xl text-gray-100 mb-1 font-bold drop-shadow-md">Periodiek Systeem der Elementen</h2>
+            <p id="pt-subtitle" class="text-sm text-gray-400 mb-3">Hover over de elementen om ze op te lichten. Bestudeer ze goed!</p>
+
+            <!-- Verzameling voortgang -->
+            <div class="flex flex-col md:flex-row items-center gap-3 md:gap-6 mb-2">
+                <div class="flex items-center gap-3">
+                    <span class="font-bold text-yellow-300">🏆 <span id="pt-collected-count">0</span> / <span id="pt-total-count">118</span> verzameld</span>
+                    <span class="font-bold text-yellow-200"><span class="text-yellow-400">●</span> <span id="pt-half-count">0</span> half</span>
+                    <div class="w-40 h-3 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="pt-progress-bar" class="h-full bg-yellow-400 transition-all duration-500" style="width:0%"></div>
+                    </div>
+                </div>
+                <button id="pt-study-toggle" class="text-sm font-semibold text-gray-300 hover:text-white bg-gray-800 border border-gray-600 rounded-full px-4 py-1">👁️ Toon alle kleuren</button>
+            </div>
+            <p class="text-xs text-gray-500 mb-2">Goed = een stap vooruit, fout = een stap terug. <span class="text-yellow-400">●</span> = half verzameld, ⭐ = verzameld</p>
+
+            <!-- Werkbalk voor eigen selectie (alleen zichtbaar in kies-modus) -->
+            <div id="pt-select-toolbar" class="hidden flex-col items-center gap-2 mb-1">
+                <div id="pt-chips" class="flex flex-wrap justify-center gap-2 max-w-4xl"></div>
+            </div>
+
+            <div class="pt-wrapper stylish-scrollbar" style="margin-bottom: 0.5rem;">
                 <div id="pt-grid-container" class="pt-grid">
                     <!-- Elementen worden hier via JS gegenereerd -->
                 </div>
             </div>
 
-            <button id="pt-continue-btn" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-10 rounded-full text-xl shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-transform transform hover:scale-105">
-                Kies Niveau & Speel!
-            </button>
+            <!-- Badges -->
+            <div id="pt-badges" class="flex flex-wrap justify-center gap-2 max-w-4xl mb-3"></div>
+
+            <!-- Knoppen bekijk-modus -->
+            <div id="pt-view-buttons" class="flex flex-col items-center gap-2">
+                <button id="pt-continue-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-10 rounded-full text-xl shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-transform transform hover:scale-105">
+                    Kies Niveau & Speel!
+                </button>
+            </div>
+
+            <!-- Knoppen kies-modus -->
+            <div id="pt-select-buttons" class="hidden flex-col md:flex-row items-center gap-4">
+                <button id="pt-cancel-btn" class="text-gray-400 hover:text-white underline font-semibold">Terug naar niveaus</button>
+                <button id="pt-practice-btn" class="bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:shadow-none text-white font-bold py-3 px-10 rounded-full text-xl shadow-[0_0_15px_rgba(34,197,94,0.5)] transition-transform transform hover:scale-105">
+                    Oefen deze! (<span id="pt-selected-count">0</span>)
+                </button>
+            </div>
+
+            <button id="pt-reset-btn" class="mt-3 text-xs text-gray-600 hover:text-red-400 underline">Voortgang wissen</button>
         </div>
 
         <!-- Level Selectie (Initieel verborgen) -->
@@ -276,7 +359,18 @@
                     <span class="text-red-400 font-bold text-xl uppercase tracking-widest">Niveau 3</span>
                     <span class="text-gray-300 text-sm mt-2 font-semibold">Expert</span>
                 </button>
+
+                <!-- Eigen selectie -->
+                <button id="custom-level-btn" class="group relative flex flex-col items-center p-6 w-48 bg-gray-800 border-2 border-cyan-400 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.6)] cursor-pointer">
+                    <div class="absolute inset-0 bg-cyan-400 opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity"></div>
+                    <span class="text-5xl mb-3 group-hover:animate-bounce">🎯</span>
+                    <span class="text-cyan-300 font-bold text-xl uppercase tracking-widest">Eigen</span>
+                    <span class="text-gray-300 text-sm mt-2 font-semibold">Kies zelf je elementen</span>
+                </button>
             </div>
+            <button id="view-collection-btn" class="mt-8 bg-gray-800 hover:bg-gray-700 border-2 border-yellow-500 text-yellow-300 font-bold py-2 px-6 rounded-full transition-transform hover:scale-105">
+                🏆 Mijn verzameling: <span id="level-collected-count">0</span> / 118
+            </button>
         </div>
 
         <!-- Hoeveelheid Selectie (Initieel verborgen, verschijnt na niveau keuze) -->
@@ -299,8 +393,10 @@
                     <span class="text-gray-300 text-sm font-semibold">Lang</span>
                 </button>
             </div>
-            <button id="back-to-levels-btn" class="mt-8 text-gray-400 hover:text-white underline font-semibold transition-colors">Terug naar niveaus</button>
+            <button id="back-to-levels-btn" class="mt-8 text-gray-400 hover:text-white underline font-semibold transition-colors">Terug</button>
         </div>
+        <!-- Spacer: centreert de inhoud, maar laat scrollen toe als het niet past -->
+        <div class="mb-auto"></div>
     </div>
 
     <!-- Game Over Overlay -->
@@ -320,8 +416,8 @@
 
     <!-- Level Complete Overlay -->
     <div id="level-complete-screen" class="absolute inset-0 bg-blue-900 bg-opacity-95 z-50 flex flex-col items-center justify-center hidden">
-        <h1 class="text-6xl font-bold mb-4 text-white drop-shadow-lg">Netjes!</h1>
-        <p class="text-2xl text-gray-200 mb-8">Level voltooid. Maak je klaar voor de volgende reacties.</p>
+        <h1 id="level-complete-title" class="text-6xl font-bold mb-4 text-white drop-shadow-lg text-center">Netjes!</h1>
+        <p id="level-complete-text" class="text-2xl text-gray-200 mb-8 text-center">Level voltooid. Maak je klaar voor de volgende reacties.</p>
         <div class="flex flex-col md:flex-row gap-4">
             <button id="next-level-btn" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
                 Volgend Level
@@ -358,7 +454,7 @@
                 <span class="hidden md:inline font-bold text-sm uppercase tracking-wider">Menu</span>
             </button>
             <div class="flex flex-col">
-                <span class="text-gray-400 text-sm font-bold uppercase tracking-wider">Level <span id="ui-level">1</span></span>
+                <span class="text-gray-400 text-sm font-bold uppercase tracking-wider"><span id="ui-level">Level 1</span></span>
                 <span class="text-2xl font-bold text-yellow-400">Score: <span id="ui-score">0</span></span>
             </div>
         </div>
@@ -453,6 +549,9 @@
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
         const levelCompleteScreen = document.getElementById('level-complete-screen');
+        const levelCompleteTitle = document.getElementById('level-complete-title');
+        const levelCompleteText = document.getElementById('level-complete-text');
+        const nextLevelBtn = document.getElementById('next-level-btn');
         const confirmQuitScreen = document.getElementById('confirm-quit-screen'); // Nieuw
         const uiScore = document.getElementById('ui-score');
         const uiLevel = document.getElementById('ui-level');
@@ -535,27 +634,182 @@
         
         // Data format: [Atoomnummer, Symbool, Naam, Categorie, Rij, Kolom]
         const periodicTableData = [
-            [1, 'H', 'Hydrogen', 'diatomic', 1, 1],
+            [1, 'H', 'Waterstof', 'diatomic', 1, 1],
             [2, 'He', 'Helium', 'noble', 1, 18],
             [3, 'Li', 'Lithium', 'alkali', 2, 1], [4, 'Be', 'Beryllium', 'alkaline', 2, 2],
-            [5, 'B', 'Boron', 'metalloid', 2, 13], [6, 'C', 'Carbon', 'polyatomic', 2, 14], [7, 'N', 'Nitrogen', 'diatomic', 2, 15], [8, 'O', 'Oxygen', 'diatomic', 2, 16], [9, 'F', 'Fluorine', 'diatomic', 2, 17], [10, 'Ne', 'Neon', 'noble', 2, 18],
-            [11, 'Na', 'Sodium', 'alkali', 3, 1], [12, 'Mg', 'Magnesium', 'alkaline', 3, 2],
-            [13, 'Al', 'Aluminium', 'post-transition', 3, 13], [14, 'Si', 'Silicon', 'metalloid', 3, 14], [15, 'P', 'Phosphorus', 'polyatomic', 3, 15], [16, 'S', 'Sulfur', 'polyatomic', 3, 16], [17, 'Cl', 'Chlorine', 'diatomic', 3, 17], [18, 'Ar', 'Argon', 'noble', 3, 18],
-            [19, 'K', 'Potassium', 'alkali', 4, 1], [20, 'Ca', 'Calcium', 'alkaline', 4, 2], [21, 'Sc', 'Scandium', 'transition', 4, 3], [22, 'Ti', 'Titanium', 'transition', 4, 4], [23, 'V', 'Vanadium', 'transition', 4, 5], [24, 'Cr', 'Chromium', 'transition', 4, 6], [25, 'Mn', 'Manganese', 'transition', 4, 7], [26, 'Fe', 'Iron', 'transition', 4, 8], [27, 'Co', 'Cobalt', 'transition', 4, 9], [28, 'Ni', 'Nickel', 'transition', 4, 10], [29, 'Cu', 'Copper', 'transition', 4, 11], [30, 'Zn', 'Zinc', 'transition', 4, 12], [31, 'Ga', 'Gallium', 'post-transition', 4, 13], [32, 'Ge', 'Germanium', 'metalloid', 4, 14], [33, 'As', 'Arsenic', 'metalloid', 4, 15], [34, 'Se', 'Selenium', 'polyatomic', 4, 16], [35, 'Br', 'Bromine', 'diatomic', 4, 17], [36, 'Kr', 'Krypton', 'noble', 4, 18],
-            [37, 'Rb', 'Rubidium', 'alkali', 5, 1], [38, 'Sr', 'Strontium', 'alkaline', 5, 2], [39, 'Y', 'Yttrium', 'transition', 5, 3], [40, 'Zr', 'Zirconium', 'transition', 5, 4], [41, 'Nb', 'Niobium', 'transition', 5, 5], [42, 'Mo', 'Molybdenum', 'transition', 5, 6], [43, 'Tc', 'Technetium', 'transition', 5, 7], [44, 'Ru', 'Ruthenium', 'transition', 5, 8], [45, 'Rh', 'Rhodium', 'transition', 5, 9], [46, 'Pd', 'Palladium', 'transition', 5, 10], [47, 'Ag', 'Silver', 'transition', 5, 11], [48, 'Cd', 'Cadmium', 'transition', 5, 12], [49, 'In', 'Indium', 'post-transition', 5, 13], [50, 'Sn', 'Tin', 'post-transition', 5, 14], [51, 'Sb', 'Antimony', 'metalloid', 5, 15], [52, 'Te', 'Tellurium', 'metalloid', 5, 16], [53, 'I', 'Iodine', 'diatomic', 5, 17], [54, 'Xe', 'Xenon', 'noble', 5, 18],
-            [55, 'Cs', 'Caesium', 'alkali', 6, 1], [56, 'Ba', 'Barium', 'alkaline', 6, 2], 
+            [5, 'B', 'Boor', 'metalloid', 2, 13], [6, 'C', 'Koolstof', 'polyatomic', 2, 14], [7, 'N', 'Stikstof', 'diatomic', 2, 15], [8, 'O', 'Zuurstof', 'diatomic', 2, 16], [9, 'F', 'Fluor', 'diatomic', 2, 17], [10, 'Ne', 'Neon', 'noble', 2, 18],
+            [11, 'Na', 'Natrium', 'alkali', 3, 1], [12, 'Mg', 'Magnesium', 'alkaline', 3, 2],
+            [13, 'Al', 'Aluminium', 'post-transition', 3, 13], [14, 'Si', 'Silicium', 'metalloid', 3, 14], [15, 'P', 'Fosfor', 'polyatomic', 3, 15], [16, 'S', 'Zwavel', 'polyatomic', 3, 16], [17, 'Cl', 'Chloor', 'diatomic', 3, 17], [18, 'Ar', 'Argon', 'noble', 3, 18],
+            [19, 'K', 'Kalium', 'alkali', 4, 1], [20, 'Ca', 'Calcium', 'alkaline', 4, 2], [21, 'Sc', 'Scandium', 'transition', 4, 3], [22, 'Ti', 'Titaan', 'transition', 4, 4], [23, 'V', 'Vanadium', 'transition', 4, 5], [24, 'Cr', 'Chroom', 'transition', 4, 6], [25, 'Mn', 'Mangaan', 'transition', 4, 7], [26, 'Fe', 'IJzer', 'transition', 4, 8], [27, 'Co', 'Kobalt', 'transition', 4, 9], [28, 'Ni', 'Nikkel', 'transition', 4, 10], [29, 'Cu', 'Koper', 'transition', 4, 11], [30, 'Zn', 'Zink', 'transition', 4, 12], [31, 'Ga', 'Gallium', 'post-transition', 4, 13], [32, 'Ge', 'Germanium', 'metalloid', 4, 14], [33, 'As', 'Arseen', 'metalloid', 4, 15], [34, 'Se', 'Seleen', 'polyatomic', 4, 16], [35, 'Br', 'Broom', 'diatomic', 4, 17], [36, 'Kr', 'Krypton', 'noble', 4, 18],
+            [37, 'Rb', 'Rubidium', 'alkali', 5, 1], [38, 'Sr', 'Strontium', 'alkaline', 5, 2], [39, 'Y', 'Yttrium', 'transition', 5, 3], [40, 'Zr', 'Zirconium', 'transition', 5, 4], [41, 'Nb', 'Niobium', 'transition', 5, 5], [42, 'Mo', 'Molybdeen', 'transition', 5, 6], [43, 'Tc', 'Technetium', 'transition', 5, 7], [44, 'Ru', 'Ruthenium', 'transition', 5, 8], [45, 'Rh', 'Rhodium', 'transition', 5, 9], [46, 'Pd', 'Palladium', 'transition', 5, 10], [47, 'Ag', 'Zilver', 'transition', 5, 11], [48, 'Cd', 'Cadmium', 'transition', 5, 12], [49, 'In', 'Indium', 'post-transition', 5, 13], [50, 'Sn', 'Tin', 'post-transition', 5, 14], [51, 'Sb', 'Antimoon', 'metalloid', 5, 15], [52, 'Te', 'Telluur', 'metalloid', 5, 16], [53, 'I', 'Jodium', 'diatomic', 5, 17], [54, 'Xe', 'Xenon', 'noble', 5, 18],
+            [55, 'Cs', 'Cesium', 'alkali', 6, 1], [56, 'Ba', 'Barium', 'alkaline', 6, 2], 
             // 57-71 Lanthanides (Rij 9)
-            [72, 'Hf', 'Hafnium', 'transition', 6, 4], [73, 'Ta', 'Tantalum', 'transition', 6, 5], [74, 'W', 'Tungsten', 'transition', 6, 6], [75, 'Re', 'Rhenium', 'transition', 6, 7], [76, 'Os', 'Osmium', 'transition', 6, 8], [77, 'Ir', 'Iridium', 'transition', 6, 9], [78, 'Pt', 'Platinum', 'transition', 6, 10], [79, 'Au', 'Gold', 'transition', 6, 11], [80, 'Hg', 'Mercury', 'transition', 6, 12], [81, 'Tl', 'Thallium', 'post-transition', 6, 13], [82, 'Pb', 'Lead', 'post-transition', 6, 14], [83, 'Bi', 'Bismuth', 'post-transition', 6, 15], [84, 'Po', 'Polonium', 'metalloid', 6, 16], [85, 'At', 'Astatine', 'metalloid', 6, 17], [86, 'Rn', 'Radon', 'noble', 6, 18],
+            [72, 'Hf', 'Hafnium', 'transition', 6, 4], [73, 'Ta', 'Tantaal', 'transition', 6, 5], [74, 'W', 'Wolfram', 'transition', 6, 6], [75, 'Re', 'Renium', 'transition', 6, 7], [76, 'Os', 'Osmium', 'transition', 6, 8], [77, 'Ir', 'Iridium', 'transition', 6, 9], [78, 'Pt', 'Platina', 'transition', 6, 10], [79, 'Au', 'Goud', 'transition', 6, 11], [80, 'Hg', 'Kwik', 'transition', 6, 12], [81, 'Tl', 'Thallium', 'post-transition', 6, 13], [82, 'Pb', 'Lood', 'post-transition', 6, 14], [83, 'Bi', 'Bismut', 'post-transition', 6, 15], [84, 'Po', 'Polonium', 'metalloid', 6, 16], [85, 'At', 'Astaat', 'metalloid', 6, 17], [86, 'Rn', 'Radon', 'noble', 6, 18],
             [87, 'Fr', 'Francium', 'alkali', 7, 1], [88, 'Ra', 'Radium', 'alkaline', 7, 2],
             // 89-103 Actinides (Rij 10)
             [104, 'Rf', 'Rutherfordium', 'transition', 7, 4], [105, 'Db', 'Dubnium', 'transition', 7, 5], [106, 'Sg', 'Seaborgium', 'transition', 7, 6], [107, 'Bh', 'Bohrium', 'transition', 7, 7], [108, 'Hs', 'Hassium', 'transition', 7, 8], [109, 'Mt', 'Meitnerium', 'unknown', 7, 9], [110, 'Ds', 'Darmstadtium', 'unknown', 7, 10], [111, 'Rg', 'Roentgenium', 'unknown', 7, 11], [112, 'Cn', 'Copernicium', 'transition', 7, 12], [113, 'Nh', 'Nihonium', 'unknown', 7, 13], [114, 'Fl', 'Flerovium', 'unknown', 7, 14], [115, 'Mc', 'Moscovium', 'unknown', 7, 15], [116, 'Lv', 'Livermorium', 'unknown', 7, 16], [117, 'Ts', 'Tennessine', 'unknown', 7, 17], [118, 'Og', 'Oganesson', 'unknown', 7, 18],
             
             // Lanthanide Series (Rij 9)
-            [57, 'La', 'Lanthanum', 'lanthanide', 9, 3], [58, 'Ce', 'Cerium', 'lanthanide', 9, 4], [59, 'Pr', 'Praseodymium', 'lanthanide', 9, 5], [60, 'Nd', 'Neodymium', 'lanthanide', 9, 6], [61, 'Pm', 'Promethium', 'lanthanide', 9, 7], [62, 'Sm', 'Samarium', 'lanthanide', 9, 8], [63, 'Eu', 'Europium', 'lanthanide', 9, 9], [64, 'Gd', 'Gadolinium', 'lanthanide', 9, 10], [65, 'Tb', 'Terbium', 'lanthanide', 9, 11], [66, 'Dy', 'Dysprosium', 'lanthanide', 9, 12], [67, 'Ho', 'Holmium', 'lanthanide', 9, 13], [68, 'Er', 'Erbium', 'lanthanide', 9, 14], [69, 'Tm', 'Thulium', 'lanthanide', 9, 15], [70, 'Yb', 'Ytterbium', 'lanthanide', 9, 16], [71, 'Lu', 'Lutetium', 'lanthanide', 9, 17],
+            [57, 'La', 'Lanthaan', 'lanthanide', 9, 3], [58, 'Ce', 'Cerium', 'lanthanide', 9, 4], [59, 'Pr', 'Praseodymium', 'lanthanide', 9, 5], [60, 'Nd', 'Neodymium', 'lanthanide', 9, 6], [61, 'Pm', 'Promethium', 'lanthanide', 9, 7], [62, 'Sm', 'Samarium', 'lanthanide', 9, 8], [63, 'Eu', 'Europium', 'lanthanide', 9, 9], [64, 'Gd', 'Gadolinium', 'lanthanide', 9, 10], [65, 'Tb', 'Terbium', 'lanthanide', 9, 11], [66, 'Dy', 'Dysprosium', 'lanthanide', 9, 12], [67, 'Ho', 'Holmium', 'lanthanide', 9, 13], [68, 'Er', 'Erbium', 'lanthanide', 9, 14], [69, 'Tm', 'Thulium', 'lanthanide', 9, 15], [70, 'Yb', 'Ytterbium', 'lanthanide', 9, 16], [71, 'Lu', 'Lutetium', 'lanthanide', 9, 17],
             
             // Actinide Series (Rij 10)
             [89, 'Ac', 'Actinium', 'actinide', 10, 3], [90, 'Th', 'Thorium', 'actinide', 10, 4], [91, 'Pa', 'Protactinium', 'actinide', 10, 5], [92, 'U', 'Uranium', 'actinide', 10, 6], [93, 'Np', 'Neptunium', 'actinide', 10, 7], [94, 'Pu', 'Plutonium', 'actinide', 10, 8], [95, 'Am', 'Americium', 'actinide', 10, 9], [96, 'Cm', 'Curium', 'actinide', 10, 10], [97, 'Bk', 'Berkelium', 'actinide', 10, 11], [98, 'Cf', 'Californium', 'actinide', 10, 12], [99, 'Es', 'Einsteinium', 'actinide', 10, 13], [100, 'Fm', 'Fermium', 'actinide', 10, 14], [101, 'Md', 'Mendelevium', 'actinide', 10, 15], [102, 'No', 'Nobelium', 'actinide', 10, 16], [103, 'Lr', 'Lawrencium', 'actinide', 10, 17]
         ];
+
+        // --- STREAMING_CHUNK: Verzamelen, Badges & Eigen Selectie ---
+
+        const CUSTOM = -1;              // currentLevelIndex voor "Eigen selectie"
+        // Elk element heeft een status: 0 = niet verzameld, 1 = half verzameld, 2 = verzameld
+        // Goed antwoord = één stap omhoog, fout antwoord = één stap omlaag
+        const NIET = 0, HALF = 1, VERZAMELD = 2;
+        const OPSLAG_SLEUTEL = 'labmatch-voortgang';
+
+        // Snel opzoeken: symbool -> info over het element
+        const elementBySym = {};
+        periodicTableData.forEach(([num, sym, name, cat, row, col]) => {
+            elementBySym[sym] = { num, sym, name, cat, row, col };
+        });
+        const alleSymbolen = periodicTableData.map(e => e[1]);
+
+        // De mooie kleuren uit de niveaus houden we; andere elementen krijgen een berekende kleur
+        const levelKleur = {};
+        levels.flat().forEach(item => levelKleur[item.sym] = item.color);
+
+        function elementItem(sym) {
+            const el = elementBySym[sym];
+            // Gulden-hoek truc: elk atoomnummer krijgt een duidelijk andere tint
+            const kleur = levelKleur[sym] || `hsl(${Math.round((el.num * 137.508) % 360)}, 85%, 65%)`;
+            return { sym, name: el.name, color: kleur };
+        }
+
+        // Voortgang = status per element, bijv. { "O": 2, "Fe": 1 }
+        let voortgang = laadVoortgang();
+
+        function laadVoortgang() {
+            try { return JSON.parse(localStorage.getItem(OPSLAG_SLEUTEL)) || {}; }
+            catch (e) { return {}; }
+        }
+        function bewaarVoortgang() {
+            try { localStorage.setItem(OPSLAG_SLEUTEL, JSON.stringify(voortgang)); } catch (e) {}
+        }
+        function status(sym) { return Math.min(voortgang[sym] || NIET, VERZAMELD); }
+        function isVerzameld(sym) { return status(sym) === VERZAMELD; }
+        function isHalf(sym) { return status(sym) === HALF; }
+        function aantalVerzameld() { return alleSymbolen.filter(isVerzameld).length; }
+        function aantalHalf() { return alleSymbolen.filter(isHalf).length; }
+        const elementTekst = (sym) => `<span class="element-font">${sym}</span> – ${elementBySym[sym].name}`;
+
+        // Badges: verdien je als alle elementen uit de groep verzameld zijn
+        const symsWaar = (test) => periodicTableData.filter(e => test(elementBySym[e[1]])).map(e => e[1]);
+        const badges = [
+            { icon: '🧪', naam: 'Niveau 1 compleet', syms: levels[0].map(i => i.sym) },
+            { icon: '🔬', naam: 'Niveau 2 compleet', syms: levels[1].map(i => i.sym) },
+            { icon: '⚗️', naam: 'Niveau 3 compleet', syms: levels[2].map(i => i.sym) },
+            { icon: '🎈', naam: 'Edelgassen',        syms: symsWaar(e => e.col === 18 && e.row <= 6) },
+            { icon: '💥', naam: 'Alkalimetalen',     syms: symsWaar(e => e.cat === 'alkali' && e.row <= 6) },
+            { icon: '🪨', naam: 'Aardalkalimetalen', syms: symsWaar(e => e.cat === 'alkaline' && e.row <= 6) },
+            { icon: '🧂', naam: 'Halogenen',         syms: ['F', 'Cl', 'Br', 'I'] },
+            { icon: '🧱', naam: 'Rij 1 t/m 3',       syms: symsWaar(e => e.num <= 18) },
+        ];
+        function badgeVerdiend(badge) { return badge.syms.every(isVerzameld); }
+
+        // Wordt aangeroepen bij elk goed antwoord
+        function registreerGoed(sym) {
+            const wasVerzameld = isVerzameld(sym);
+            const badgesVoor = badges.filter(badgeVerdiend);
+
+            if (wasVerzameld) return; // Al helemaal verzameld, verder omhoog kan niet
+
+            voortgang[sym] = status(sym) + 1;
+            bewaarVoortgang();
+
+            if (isHalf(sym)) {
+                toonMelding(`✨ Half verzameld: ${elementTekst(sym)} <span class="opacity-75">(nog 1 keer goed!)</span>`, 'half');
+            } else {
+                toonMelding(`⭐ Verzameld: ${elementTekst(sym)}`);
+                badges.filter(b => badgeVerdiend(b) && !badgesVoor.includes(b)).forEach(b => {
+                    setTimeout(() => toonMelding(`${b.icon} Badge verdiend: ${b.naam}!`, 'badge'), 600);
+                });
+            }
+        }
+
+        // Wordt aangeroepen bij een fout: het element van het buisje zakt één stap
+        function registreerFout(sym) {
+            if (status(sym) === NIET) return; // Niets om kwijt te raken
+            const badgesVoor = badges.filter(badgeVerdiend);
+
+            voortgang[sym] = status(sym) - 1;
+            if (voortgang[sym] === NIET) delete voortgang[sym];
+            bewaarVoortgang();
+
+            if (isHalf(sym)) {
+                toonMelding(`💔 ${elementTekst(sym)} is weer maar half verzameld`, 'fout');
+            } else {
+                toonMelding(`💔 ${elementTekst(sym)} kwijtgeraakt!`, 'fout');
+            }
+            badgesVoor.filter(b => !badgeVerdiend(b)).forEach(b => {
+                setTimeout(() => toonMelding(`${b.icon} Badge kwijt: ${b.naam}`, 'fout'), 600);
+            });
+        }
+
+        // soort: 'goed' (standaard), 'half', 'badge' of 'fout'
+        function toonMelding(html, soort = 'goed') {
+            const div = document.createElement('div');
+            div.className = 'melding melding-' + soort;
+            div.innerHTML = html;
+            document.getElementById('melding-container').appendChild(div);
+            if (synth && soort !== 'fout') { // Bij een fout klinkt de explosie al
+                const now = Tone.now();
+                synth.triggerAttackRelease(soort === 'badge' ? 'G5' : 'E6', '16n', now);
+                synth.triggerAttackRelease(soort === 'badge' ? 'C6' : 'A6', '16n', now + 0.08);
+            }
+            setTimeout(() => div.remove(), 3100);
+        }
+
+        // Eigen selectie
+        let eigenSelectie = new Set();
+        let ptModus = 'bekijken';   // 'bekijken' of 'kiezen'
+        let studeerModus = false;   // true = alle kleuren tonen, ook niet-verzamelde
+
+        // Snelkeuze-knoppen om een heel deel in één keer te selecteren
+        const selectieGroepen = [
+            { label: 'Rij 1 t/m 3',        syms: () => symsWaar(e => e.num <= 18) },
+            { label: 'Rij 4',              syms: () => symsWaar(e => e.row === 4) },
+            { label: 'Alkalimetalen',      syms: () => symsWaar(e => e.cat === 'alkali' && e.row <= 6) },
+            { label: 'Aardalkalimetalen',  syms: () => symsWaar(e => e.cat === 'alkaline' && e.row <= 6) },
+            { label: 'Halogenen',          syms: () => ['F', 'Cl', 'Br', 'I'] },
+            { label: 'Edelgassen',         syms: () => symsWaar(e => e.col === 18 && e.row <= 6) },
+            { label: 'Overgangsmetalen',   syms: () => symsWaar(e => e.cat === 'transition' && e.row <= 6) },
+            { label: '✨ Nog niet verzameld', syms: () => alleSymbolen.filter(s => !isVerzameld(s)) },
+        ];
+
+        function renderChips() {
+            const container = document.getElementById('pt-chips');
+            container.innerHTML = '';
+            selectieGroepen.forEach(groep => {
+                const syms = groep.syms();
+                const alles = syms.length > 0 && syms.every(s => eigenSelectie.has(s));
+                const chip = document.createElement('button');
+                chip.className = 'chip' + (alles ? ' chip-active' : '');
+                chip.innerText = groep.label;
+                chip.addEventListener('click', () => {
+                    // Klik = hele groep erbij; nog een keer klikken = hele groep eraf
+                    syms.forEach(s => alles ? eigenSelectie.delete(s) : eigenSelectie.add(s));
+                    renderPeriodicTable();
+                });
+                container.appendChild(chip);
+            });
+            const wis = document.createElement('button');
+            wis.className = 'chip';
+            wis.innerText = '🗑️ Wis selectie';
+            wis.addEventListener('click', () => { eigenSelectie.clear(); renderPeriodicTable(); });
+            container.appendChild(wis);
+        }
+
+        function updateSelectieTeller() {
+            document.getElementById('pt-selected-count').innerText = eigenSelectie.size;
+            document.getElementById('pt-practice-btn').disabled = eigenSelectie.size < 2;
+        }
 
         function renderPeriodicTable() {
             ptGridContainer.innerHTML = '';
@@ -565,11 +819,20 @@
                 const [num, sym, name, cat, row, col] = el;
                 const div = document.createElement('div');
                 div.className = `pt-element cat-${cat}`;
+                if (!studeerModus && status(sym) === NIET) div.classList.add('pt-locked');
+                if (!studeerModus && isHalf(sym)) div.classList.add('pt-halfvol');
+                if (ptModus === 'kiezen' && eigenSelectie.has(sym)) div.classList.add('pt-selected');
                 div.style.gridArea = `${row} / ${col}`;
+
+                let markering = '';
+                if (isVerzameld(sym)) markering = '<span class="pt-star">⭐</span>';
+                else if (isHalf(sym)) markering = '<span class="pt-half"></span>';
+
                 div.innerHTML = `
                     <span class="pt-num">${num}</span>
                     <span class="pt-sym element-font">${sym}</span>
                     <span class="pt-name">${name}</span>
+                    ${markering}
                 `;
                 
                 // Audio plopje op hover (optioneel, maar leuk!)
@@ -577,6 +840,16 @@
                     if (synth && Tone.context.state === 'running') {
                         synth.triggerAttackRelease("C6", "64n");
                     }
+                });
+
+                // In kies-modus: klik om te (de)selecteren
+                div.addEventListener('click', () => {
+                    if (ptModus !== 'kiezen') return;
+                    if (eigenSelectie.has(sym)) eigenSelectie.delete(sym);
+                    else eigenSelectie.add(sym);
+                    div.classList.toggle('pt-selected');
+                    updateSelectieTeller();
+                    renderChips();
                 });
 
                 ptGridContainer.appendChild(div);
@@ -594,6 +867,73 @@
             gap2.style.gridArea = '7 / 3';
             gap2.innerText = '89-103';
             ptGridContainer.appendChild(gap2);
+
+            // Voortgang bijwerken
+            const verzameld = aantalVerzameld();
+            document.getElementById('pt-collected-count').innerText = verzameld;
+            document.getElementById('pt-half-count').innerText = aantalHalf();
+            document.getElementById('pt-total-count').innerText = alleSymbolen.length;
+            document.getElementById('pt-progress-bar').style.width = (verzameld / alleSymbolen.length * 100) + '%';
+            document.getElementById('pt-study-toggle').innerText = studeerModus ? '🏆 Toon mijn verzameling' : '👁️ Toon alle kleuren';
+
+            // Badges
+            const badgeContainer = document.getElementById('pt-badges');
+            badgeContainer.innerHTML = '';
+            badges.forEach(b => {
+                const klaar = b.syms.filter(isVerzameld).length;
+                const span = document.createElement('span');
+                span.className = 'badge' + (badgeVerdiend(b) ? ' badge-earned' : '');
+                span.title = b.syms.join(', ');
+                span.innerHTML = `<span class="badge-icon">${b.icon}</span> ${b.naam} <span class="opacity-70">${klaar}/${b.syms.length}</span>`;
+                badgeContainer.appendChild(span);
+            });
+
+            if (ptModus === 'kiezen') {
+                renderChips();
+                updateSelectieTeller();
+            }
+        }
+
+        // Toon het periodiek systeem in 'bekijken' of 'kiezen' modus
+        function toonPeriodiekSysteem(modus) {
+            ptModus = modus;
+            const kiezen = modus === 'kiezen';
+
+            introContainer.classList.add('hidden');
+            levelSelection.classList.remove('flex');
+            levelSelection.classList.add('hidden');
+            elementSelection.classList.remove('flex');
+            elementSelection.classList.add('hidden');
+
+            document.getElementById('pt-title').innerText = kiezen ? '🎯 Kies wat je wilt oefenen' : 'Periodiek Systeem der Elementen';
+            document.getElementById('pt-subtitle').innerText = kiezen
+                ? 'Klik op elementen of gebruik de knoppen hieronder om een heel deel te kiezen (minimaal 2).'
+                : 'Hover over de elementen om ze op te lichten. Bestudeer ze goed!';
+
+            const toggle = (id, zichtbaar) => {
+                const el = document.getElementById(id);
+                el.classList.toggle('hidden', !zichtbaar);
+                el.classList.toggle('flex', zichtbaar);
+            };
+            toggle('pt-select-toolbar', kiezen);
+            toggle('pt-select-buttons', kiezen);
+            toggle('pt-view-buttons', !kiezen);
+
+            periodicTableScreen.classList.remove('hidden');
+            periodicTableScreen.classList.add('flex');
+            renderPeriodicTable();
+            startScreen.scrollTop = 0;
+        }
+
+        function toonNiveauKeuze() {
+            periodicTableScreen.classList.remove('flex');
+            periodicTableScreen.classList.add('hidden');
+            elementSelection.classList.remove('flex');
+            elementSelection.classList.add('hidden');
+            document.getElementById('level-collected-count').innerText = aantalVerzameld();
+            levelSelection.classList.remove('hidden');
+            levelSelection.classList.add('flex');
+            startScreen.scrollTop = 0;
         }
 
         // --- STREAMING_CHUNK: Game Flow (Start, Render, Reset) ---
@@ -606,34 +946,79 @@
             if (!synth) initAudio();
             
             // Verberg intro, toon periodiek systeem
-            introContainer.classList.add('hidden');
-            periodicTableScreen.classList.remove('hidden');
-            periodicTableScreen.classList.add('flex');
-            
-            renderPeriodicTable(); // Genereer eenmalig het systeem
+            toonPeriodiekSysteem('bekijken');
         });
 
         // Knop na het periodiek systeem
-        ptContinueBtn.addEventListener('click', () => {
+        ptContinueBtn.addEventListener('click', toonNiveauKeuze);
+
+        // Verzameling bekijken vanuit de niveaukeuze
+        document.getElementById('view-collection-btn').addEventListener('click', () => toonPeriodiekSysteem('bekijken'));
+
+        // Wissel tussen "mijn verzameling" (grijs = nog niet verzameld) en "alle kleuren" (om te studeren)
+        document.getElementById('pt-study-toggle').addEventListener('click', () => {
+            studeerModus = !studeerModus;
+            renderPeriodicTable();
+        });
+
+        // Voortgang wissen (twee keer klikken om te bevestigen)
+        const resetBtn = document.getElementById('pt-reset-btn');
+        let resetBevestigen = false;
+        resetBtn.addEventListener('click', () => {
+            if (!resetBevestigen) {
+                resetBevestigen = true;
+                resetBtn.innerText = 'Weet je het zeker? Klik nog een keer om alles te wissen';
+                resetBtn.classList.add('text-red-400');
+                setTimeout(() => {
+                    resetBevestigen = false;
+                    resetBtn.innerText = 'Voortgang wissen';
+                    resetBtn.classList.remove('text-red-400');
+                }, 3000);
+                return;
+            }
+            voortgang = {};
+            bewaarVoortgang();
+            resetBevestigen = false;
+            resetBtn.innerText = 'Voortgang wissen';
+            resetBtn.classList.remove('text-red-400');
+            renderPeriodicTable();
+        });
+
+        // Toon alleen de hoeveelheid-knoppen die passen bij hoeveel elementen er zijn
+        function toonHoeveelheidKeuze(maxAantal) {
+            document.querySelectorAll('.amount-btn').forEach(btn => {
+                btn.classList.toggle('hidden', parseInt(btn.dataset.amount) > maxAantal);
+            });
+            levelSelection.classList.remove('flex');
+            levelSelection.classList.add('hidden');
             periodicTableScreen.classList.remove('flex');
             periodicTableScreen.classList.add('hidden');
-            
-            levelSelection.classList.remove('hidden');
-            levelSelection.classList.add('flex');
-        });
+            elementSelection.classList.remove('hidden');
+            elementSelection.classList.add('flex');
+        }
 
         // Event listeners voor de Protocol (level) knoppen
         document.querySelectorAll('.level-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 currentLevelIndex = parseInt(e.currentTarget.dataset.level);
-                
-                // Verberg de level selectie, toon de hoeveelheid selectie
-                levelSelection.classList.remove('flex');
-                levelSelection.classList.add('hidden');
-                
-                elementSelection.classList.remove('hidden');
-                elementSelection.classList.add('flex');
+                toonHoeveelheidKeuze(levels[currentLevelIndex].length);
             });
+        });
+
+        // Eigen selectie: open het periodiek systeem in kies-modus
+        document.getElementById('custom-level-btn').addEventListener('click', () => toonPeriodiekSysteem('kiezen'));
+        document.getElementById('pt-cancel-btn').addEventListener('click', toonNiveauKeuze);
+
+        document.getElementById('pt-practice-btn').addEventListener('click', () => {
+            if (eigenSelectie.size < 2) return;
+            currentLevelIndex = CUSTOM;
+            if (eigenSelectie.size <= 4) {
+                // Weinig gekozen? Dan meteen spelen met allemaal
+                startScreen.classList.add('hidden');
+                startNewGame(CUSTOM, eigenSelectie.size);
+            } else {
+                toonHoeveelheidKeuze(eigenSelectie.size);
+            }
         });
 
         // Event listeners voor de Hoeveelheid knoppen
@@ -645,13 +1030,10 @@
             });
         });
 
-        // Terug knop naar niveaus
+        // Terug knop (naar niveaus, of naar je selectie als je "Eigen" koos)
         document.getElementById('back-to-levels-btn').addEventListener('click', () => {
-            elementSelection.classList.remove('flex');
-            elementSelection.classList.add('hidden');
-            
-            levelSelection.classList.remove('hidden');
-            levelSelection.classList.add('flex');
+            if (currentLevelIndex === CUSTOM) toonPeriodiekSysteem('kiezen');
+            else toonNiveauKeuze();
         });
 
         document.getElementById('restart-btn').addEventListener('click', () => {
@@ -661,10 +1043,16 @@
 
         document.getElementById('next-level-btn').addEventListener('click', () => {
             levelCompleteScreen.classList.add('hidden');
-            currentLevelIndex++;
-            if (currentLevelIndex >= levels.length) {
-                currentLevelIndex = 0; // Terug naar begin als alles is uitgespeeld
+            if (currentLevelIndex === CUSTOM) {
+                startLevel(); // Nieuwe ronde met elementen uit je eigen selectie
+                return;
             }
+            if (currentLevelIndex >= levels.length - 1) {
+                // Alles uitgespeeld: begin opnieuw bij level 1 met nieuwe score en levens
+                startNewGame(0, currentElementCount);
+                return;
+            }
+            currentLevelIndex++;
             startLevel(); // Behoud score en levens, start alleen volgend level bord
         });
 
@@ -684,18 +1072,9 @@
             // Toon start scherm
             startScreen.classList.remove('hidden');
             
-            // Zet direct het level-selectie scherm klaar (of het periodiek systeem)
-            introContainer.classList.add('hidden');
-            
-            // Verberg eventuele element-selectie en periodiek systeem
-            elementSelection.classList.remove('flex');
-            elementSelection.classList.add('hidden');
-            periodicTableScreen.classList.remove('flex');
-            periodicTableScreen.classList.add('hidden');
-            
             // Toon level selectie (zodat spelers niet steeds het intro scherm hoeven te doorlopen)
-            levelSelection.classList.remove('hidden');
-            levelSelection.classList.add('flex');
+            introContainer.classList.add('hidden');
+            toonNiveauKeuze();
         };
         
         document.getElementById('menu-btn-loss').addEventListener('click', returnToMenu);
@@ -719,7 +1098,9 @@
         // Start een compleet nieuw spel (reset score en levens)
         function startNewGame(levelIndex, amount) {
             currentLevelIndex = levelIndex;
-            currentElementCount = amount;
+            // Nooit meer elementen dan er in de selectie zitten
+            const poolGrootte = levelIndex === CUSTOM ? eigenSelectie.size : levels[levelIndex].length;
+            currentElementCount = Math.min(amount, poolGrootte);
             score = 0;
             lives = MAX_LEVENS;
             updateUI();
@@ -728,7 +1109,7 @@
 
         function updateUI() {
             uiScore.innerText = score;
-            uiLevel.innerText = currentLevelIndex + 1;
+            uiLevel.innerText = currentLevelIndex === CUSTOM ? 'Eigen selectie' : 'Level ' + (currentLevelIndex + 1);
             
             uiLives.innerHTML = '';
             for(let i=0; i<MAX_LEVENS; i++) {
@@ -809,7 +1190,14 @@
             updateUI();
 
             // Pak willekeurige elementen uit het geselecteerde level
-            const fullLevelData = shuffleArray(levels[currentLevelIndex]);
+            let fullLevelData;
+            if (currentLevelIndex === CUSTOM) {
+                // Eigen selectie: elementen die je het minst vaak goed had komen eerst aan de beurt
+                fullLevelData = shuffleArray([...eigenSelectie].map(elementItem))
+                    .sort((a, b) => status(a.sym) - status(b.sym));
+            } else {
+                fullLevelData = shuffleArray(levels[currentLevelIndex]);
+            }
             // Snijd de array af op de gekozen hoeveelheid (4, 6 of 8)
             const levelData = fullLevelData.slice(0, currentElementCount);
             
@@ -1015,6 +1403,7 @@
                 playSizzle();
                 score += PUNTEN_PER_GOED;
                 matchedInLevel++;
+                registreerGoed(tube.dataset.symbol); // Telt mee voor je verzameling
                 
                 // Kleur fles
                 flaskSVG.setAttribute('fill', tube.dataset.color);
@@ -1045,6 +1434,9 @@
 
                 lives--;
                 breakGoggle();
+                registreerFout(tube.dataset.symbol); // Element van het buisje zakt een stap
+                // Wacht tot de bril-animatie (0,5 s) klaar is voordat de brillen opnieuw getekend worden
+                setTimeout(updateUI, 550);
 
                 setTimeout(() => {
                     flask.classList.remove('shake-explode');
@@ -1064,6 +1456,7 @@
                         shuffleRemainingTubes();
                     }
                 }, 800);
+                return; // updateUI gebeurt hierboven, ná de animatie
             }
             updateUI();
         }
@@ -1159,7 +1552,22 @@
         function checkLevelEnd() {
             // Nu controleren we of de gematchte elementen gelijk is aan de gekozen hoeveelheid
             if (matchedInLevel === currentElementCount) {
+                const isLaatsteLevel = currentLevelIndex >= levels.length - 1;
                 setTimeout(() => {
+                    if (currentLevelIndex === CUSTOM) {
+                        levelCompleteTitle.innerText = 'Netjes!';
+                        levelCompleteText.innerHTML = `Ronde voltooid! Je verzameling: <span class="text-yellow-400 font-bold">🏆 ${aantalVerzameld()} / ${alleSymbolen.length}</span>`;
+                        nextLevelBtn.innerText = 'Nieuwe ronde';
+                    } else if (isLaatsteLevel) {
+                        // Alles uitgespeeld: toon eindscherm
+                        levelCompleteTitle.innerText = 'Je hebt alles uitgespeeld! 🏆';
+                        levelCompleteText.innerHTML = `Je bent nu een echte scheikundige! Eindscore: <span class="text-yellow-400 font-bold">${score}</span>`;
+                        nextLevelBtn.innerText = 'Opnieuw spelen';
+                    } else {
+                        levelCompleteTitle.innerText = 'Netjes!';
+                        levelCompleteText.innerText = 'Level voltooid. Maak je klaar voor de volgende reacties.';
+                        nextLevelBtn.innerText = 'Volgend Level';
+                    }
                     levelCompleteScreen.classList.remove('hidden');
                 }, 500);
             }
