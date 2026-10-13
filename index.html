@@ -249,6 +249,31 @@
         .badge .badge-icon { filter: grayscale(1); opacity: 0.5; }
         .badge.badge-earned .badge-icon { filter: none; opacity: 1; }
 
+        /* --- Gebieden-kaart --- */
+        .gebied-kaart {
+            position: relative; background: #1f2937; border: 2px solid var(--kleur); border-radius: 1rem;
+            padding: 1rem; text-align: left; box-shadow: 0 0 18px color-mix(in srgb, var(--kleur) 30%, transparent);
+            transition: transform 0.2s;
+        }
+        .gebied-kaart:not(.locked):hover { transform: translateY(-3px); }
+        .gebied-kaart.locked { border-color: #374151; box-shadow: none; }
+        .gebied-kaart.locked > .kaart-inhoud { opacity: 0.15; filter: grayscale(1); pointer-events: none; }
+        .slot-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; font-weight: 700; color: #d1d5db; text-align: center; padding: 1rem; background: rgba(17,24,39,0.55); border-radius: 0.9rem; }
+        .gebied-nr { width: 30px; height: 30px; flex-shrink: 0; border-radius: 9999px; background: var(--kleur); color: #111; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+        .mini-sym { font-family: 'Space Mono', monospace; font-size: 0.7rem; font-weight: 700; padding: 0 5px; border-radius: 4px; background: var(--kleur); color: #111; }
+        .les-btn {
+            display: flex; flex-direction: column; align-items: center; padding: 0.45rem 0.25rem; border-radius: 0.6rem;
+            font-weight: 800; font-size: 0.85rem; border: 2px solid #4b5563; background: #111827; color: #e5e7eb;
+            transition: transform 0.15s;
+        }
+        .les-btn:not(:disabled):hover { transform: scale(1.06); }
+        .les-btn .sterren { font-size: 0.7rem; letter-spacing: 1px; min-height: 1rem; }
+        .les-btn.volgende { background: var(--kleur); color: #111; border-color: white; box-shadow: 0 0 14px var(--kleur); animation: pulse 2s infinite; }
+        .les-btn.gehaald { border-color: #22c55e; background: #14532d; }
+        .les-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .intro-el { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 72px; height: 60px; border-radius: 6px; }
+        .intro-el .naam { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; }
+
         /* Meldingen (toasts) voor nieuwe elementen en badges */
         #melding-container { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 80; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
         .melding {
@@ -317,13 +342,13 @@
             <!-- Knoppen bekijk-modus -->
             <div id="pt-view-buttons" class="flex flex-col items-center gap-2">
                 <button id="pt-continue-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-10 rounded-full text-xl shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-transform transform hover:scale-105">
-                    Kies Niveau & Speel!
+                    Naar de kaart 🗺️
                 </button>
             </div>
 
             <!-- Knoppen kies-modus -->
             <div id="pt-select-buttons" class="hidden flex-col md:flex-row items-center gap-4">
-                <button id="pt-cancel-btn" class="text-gray-400 hover:text-white underline font-semibold">Terug naar niveaus</button>
+                <button id="pt-cancel-btn" class="text-gray-400 hover:text-white underline font-semibold">Terug naar de kaart</button>
                 <button id="pt-practice-btn" class="bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:shadow-none text-white font-bold py-3 px-10 rounded-full text-xl shadow-[0_0_15px_rgba(34,197,94,0.5)] transition-transform transform hover:scale-105">
                     Oefen deze! (<span id="pt-selected-count">0</span>)
                 </button>
@@ -332,45 +357,36 @@
             <button id="pt-reset-btn" class="mt-3 text-xs text-gray-600 hover:text-red-400 underline">Voortgang wissen</button>
         </div>
 
-        <!-- Level Selectie (Initieel verborgen) -->
-        <div id="level-selection" class="hidden flex-col items-center z-10 mt-4">
-            <p class="text-2xl text-gray-300 mb-6 font-bold">Kies je niveau!</p>
-            <div class="flex flex-col md:flex-row gap-6">
-                <!-- Niveau 1: Beginner -->
-                <button class="level-btn group relative flex flex-col items-center p-6 w-48 bg-gray-800 border-2 border-green-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] cursor-pointer" data-level="0">
-                    <div class="absolute inset-0 bg-green-500 opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity"></div>
-                    <span class="text-5xl mb-3 group-hover:animate-bounce">🧪</span>
-                    <span class="text-green-400 font-bold text-xl uppercase tracking-widest">Niveau 1</span>
-                    <span class="text-gray-300 text-sm mt-2 font-semibold">Beginner</span>
+        <!-- Gebieden-kaart (Initieel verborgen) -->
+        <div id="level-selection" class="hidden flex-col items-center z-10 mt-2 w-full max-w-6xl">
+            <p class="text-3xl text-gray-100 mb-1 font-bold">🗺️ Kies je gebied</p>
+            <p class="text-sm text-gray-400 mb-5">Haal Les 1, Les 2 en de Toets om het volgende gebied vrij te spelen. Hoe meer veiligheidsbrillen je over hebt, hoe meer sterren!</p>
+            <div id="gebieden-kaart" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full px-2">
+                <!-- Gebieden worden hier via JS gegenereerd -->
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 mt-6">
+                <button id="custom-level-btn" class="bg-gray-800 hover:bg-gray-700 border-2 border-cyan-400 text-cyan-300 font-bold py-2 px-6 rounded-full transition-transform hover:scale-105">
+                    🎯 Eigen selectie oefenen
                 </button>
-
-                <!-- Niveau 2: Gevorderd -->
-                <button class="level-btn group relative flex flex-col items-center p-6 w-48 bg-gray-800 border-2 border-yellow-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.6)] cursor-pointer" data-level="1">
-                    <div class="absolute inset-0 bg-yellow-500 opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity"></div>
-                    <span class="text-5xl mb-3 group-hover:animate-bounce">🔬</span>
-                    <span class="text-yellow-400 font-bold text-xl uppercase tracking-widest">Niveau 2</span>
-                    <span class="text-gray-300 text-sm mt-2 font-semibold">Gevorderd</span>
-                </button>
-            
-                <!-- Niveau 3: Expert -->
-                <button class="level-btn group relative flex flex-col items-center p-6 w-48 bg-gray-800 border-2 border-red-500 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_30px_rgba(239,68,68,0.6)] cursor-pointer" data-level="2">
-                    <div class="absolute inset-0 bg-red-500 opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity"></div>
-                    <span class="text-5xl mb-3 group-hover:animate-pulse">⚗️</span>
-                    <span class="text-red-400 font-bold text-xl uppercase tracking-widest">Niveau 3</span>
-                    <span class="text-gray-300 text-sm mt-2 font-semibold">Expert</span>
-                </button>
-
-                <!-- Eigen selectie -->
-                <button id="custom-level-btn" class="group relative flex flex-col items-center p-6 w-48 bg-gray-800 border-2 border-cyan-400 rounded-2xl hover:bg-gray-700 transition-all hover:scale-105 hover:-translate-y-2 shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.6)] cursor-pointer">
-                    <div class="absolute inset-0 bg-cyan-400 opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity"></div>
-                    <span class="text-5xl mb-3 group-hover:animate-bounce">🎯</span>
-                    <span class="text-cyan-300 font-bold text-xl uppercase tracking-widest">Eigen</span>
-                    <span class="text-gray-300 text-sm mt-2 font-semibold">Kies zelf je elementen</span>
+                <button id="view-collection-btn" class="bg-gray-800 hover:bg-gray-700 border-2 border-yellow-500 text-yellow-300 font-bold py-2 px-6 rounded-full transition-transform hover:scale-105">
+                    🏆 Mijn verzameling: <span id="level-collected-count">0</span> / 118
                 </button>
             </div>
-            <button id="view-collection-btn" class="mt-8 bg-gray-800 hover:bg-gray-700 border-2 border-yellow-500 text-yellow-300 font-bold py-2 px-6 rounded-full transition-transform hover:scale-105">
-                🏆 Mijn verzameling: <span id="level-collected-count">0</span> / 118
-            </button>
+        </div>
+
+        <!-- Les-intro: wat ga je oefenen + tip -->
+        <div id="level-intro" class="hidden flex-col items-center z-10 mt-2 w-full max-w-3xl px-2">
+            <p id="intro-gebied" class="text-sm uppercase tracking-widest font-bold text-gray-400">Gebied 1</p>
+            <h2 id="intro-titel" class="text-4xl md:text-5xl font-bold mb-4 text-white">Les 1</h2>
+            <div id="intro-tip" class="w-full bg-gray-800 border-l-4 rounded-xl p-4 text-left text-gray-200 mb-5"></div>
+            <p id="intro-uitleg" class="text-gray-400 text-sm mb-3"></p>
+            <div id="intro-elementen" class="flex flex-wrap justify-center gap-2 mb-6"></div>
+            <div class="flex flex-col-reverse md:flex-row items-center gap-4">
+                <button id="intro-terug-btn" class="text-gray-400 hover:text-white underline font-semibold">Terug naar de kaart</button>
+                <button id="intro-start-btn" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-12 rounded-full text-2xl shadow-[0_0_20px_rgba(34,197,94,0.5)] transition-transform hover:scale-105">
+                    Start! 🧪
+                </button>
+            </div>
         </div>
 
         <!-- Hoeveelheid Selectie (Initieel verborgen, verschijnt na niveau keuze) -->
@@ -409,7 +425,7 @@
                 Probeer Opnieuw
             </button>
             <button id="menu-btn-loss" class="bg-red-950 hover:bg-red-800 border-2 border-red-500 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
-                Ander Niveau
+                Naar de kaart
             </button>
         </div>
     </div>
@@ -417,13 +433,14 @@
     <!-- Level Complete Overlay -->
     <div id="level-complete-screen" class="absolute inset-0 bg-blue-900 bg-opacity-95 z-50 flex flex-col items-center justify-center hidden">
         <h1 id="level-complete-title" class="text-6xl font-bold mb-4 text-white drop-shadow-lg text-center">Netjes!</h1>
-        <p id="level-complete-text" class="text-2xl text-gray-200 mb-8 text-center">Level voltooid. Maak je klaar voor de volgende reacties.</p>
+        <div id="level-complete-stars" class="text-6xl mb-4 tracking-widest"></div>
+        <p id="level-complete-text" class="text-2xl text-gray-200 mb-8 text-center px-4">Level voltooid. Maak je klaar voor de volgende reacties.</p>
         <div class="flex flex-col md:flex-row gap-4">
             <button id="next-level-btn" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
                 Volgend Level
             </button>
             <button id="menu-btn-win" class="bg-blue-950 hover:bg-blue-800 border-2 border-blue-500 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
-                Ander Niveau
+                Naar de kaart
             </button>
         </div>
     </div>
@@ -433,7 +450,7 @@
         <div class="bg-gray-800 border-2 border-gray-600 rounded-3xl p-8 md:p-12 max-w-lg text-center shadow-[0_0_40px_rgba(0,0,0,0.8)]">
             <span class="text-6xl mb-4 block">⚠️</span>
             <h2 class="text-3xl md:text-4xl font-bold mb-4 text-white">Even wachten!</h2>
-            <p class="text-xl text-gray-300 mb-8">Weet je zeker dat je wilt stoppen? Je huidige score en voortgang gaan dan verloren.</p>
+            <p class="text-xl text-gray-300 mb-8">Weet je zeker dat je wilt stoppen? Je voortgang in deze les gaat dan verloren. (Je verzameling blijft bewaard!)</p>
             <div class="flex flex-col md:flex-row gap-4 justify-center">
                 <button id="cancel-quit-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg transition-transform transform hover:scale-105">
                     Nee, ga door
@@ -454,7 +471,7 @@
                 <span class="hidden md:inline font-bold text-sm uppercase tracking-wider">Menu</span>
             </button>
             <div class="flex flex-col">
-                <span class="text-gray-400 text-sm font-bold uppercase tracking-wider"><span id="ui-level">Level 1</span></span>
+                <span class="text-gray-400 text-sm font-bold uppercase tracking-wider"><span id="ui-level"></span></span>
                 <span class="text-2xl font-bold text-yellow-400">Score: <span id="ui-score">0</span></span>
             </div>
         </div>
@@ -496,47 +513,18 @@
 
     <script>
         // --- Spel Data & Logica ---
-        const levels = [
-            // Level 1: Makkelijk / Intuïtief
-            [
-                { sym: 'O', name: 'Zuurstof', color: '#00F0FF' }, // Fel Cyaan
-                { sym: 'C', name: 'Koolstof', color: '#FF3366' }, // Vrolijk Kersenroze
-                { sym: 'Ne', name: 'Neon', color: '#A8FF3E' },    // Limoengroen
-                { sym: 'Al', name: 'Aluminium', color: '#B088FF' }, // Zacht Paars
-                { sym: 'H', name: 'Waterstof', color: '#FF99CC' }, // Lichtroze
-                { sym: 'He', name: 'Helium', color: '#66FFFF' },   // Lichtblauw
-                { sym: 'N', name: 'Stikstof', color: '#FFB366' },  // Zacht Oranje
-                { sym: 'P', name: 'Fosfor', color: '#CCFF66' }     // Geelgroen
-            ],
-            // Level 2: Latijnse afwijkingen (Kleuren verraden niets meer)
-            [
-                { sym: 'Fe', name: 'IJzer', color: '#FFAA00' },   // Zonnig Oranje
-                { sym: 'Au', name: 'Goud', color: '#20E3B2' },    // Muntgroen (zeker geen goudkleur!)
-                { sym: 'Ag', name: 'Zilver', color: '#FF61D2' },  // Zuurstok Roze
-                { sym: 'Na', name: 'Natrium', color: '#4A90E2' }, // Helder Blauw
-                { sym: 'K', name: 'Kalium', color: '#D279FF' },   // Lavendel
-                { sym: 'Cu', name: 'Koper', color: '#FF8C66' },   // Zalmroze
-                { sym: 'S', name: 'Zwavel', color: '#FFFF99' },   // Zachtgeel
-                { sym: 'Sb', name: 'Antimoon', color: '#66FFCC' } // Mintcyaan
-            ],
-            // Level 3: Moeilijker
-            [
-                { sym: 'Pb', name: 'Lood', color: '#00FF9D' },    // Neon Zeegroen
-                { sym: 'Hg', name: 'Kwik', color: '#9D4EDD' },    // Diep Vrolijk Paars
-                { sym: 'W', name: 'Wolfram', color: '#FFD700' },  // Goudgeel
-                { sym: 'Sn', name: 'Tin', color: '#FF8C42' },     // Perzik/Koraal
-                { sym: 'Pt', name: 'Platina', color: '#E6E6E6' }, // Witgrijs
-                { sym: 'U', name: 'Uranium', color: '#39FF14' },  // Neongroen
-                { sym: 'Co', name: 'Kobalt', color: '#3333FF' },  // Felblauw
-                { sym: 'I', name: 'Jodium', color: '#B300B3' }    // Donker Magenta
-            ]
-        ];
-
         const PUNTEN_PER_GOED = 100;
         const MAX_LEVENS = 3;
 
-        let currentLevelIndex = 0;
-        let currentElementCount = 4; // Nieuwe variabele om bij te houden hoeveel we er spelen
+        // Spelstatus
+        let spelModus = 'gebied';   // 'gebied' (kaart) of 'eigen' (eigen selectie)
+        let huidigGebied = 0;       // index in gebieden[]
+        let huidigeLes = 0;         // 0 = Les 1, 1 = Les 2, 2 = Toets
+        let rondes = [];            // de elementen van deze les, verdeeld in rondes van max 8
+        let rondeIndex = 0;
+        let huidigBord = [];        // elementen die nu op tafel staan
+        let eigenAantal = 4;        // hoeveel elementen per ronde bij eigen selectie
+        let volgendeActie = null;   // wat de knop op het "gehaald"-scherm doet
         let score = 0;
         let lives = MAX_LEVENS;
         let matchedInLevel = 0;
@@ -560,6 +548,7 @@
         
         const introContainer = document.getElementById('intro-container');
         const levelSelection = document.getElementById('level-selection');
+        const levelIntro = document.getElementById('level-intro');
         const elementSelection = document.getElementById('element-selection'); // Nieuw
         const periodicTableScreen = document.getElementById('periodic-table-screen'); // Nieuw
         const ptGridContainer = document.getElementById('pt-grid-container'); // Nieuw
@@ -658,7 +647,6 @@
 
         // --- STREAMING_CHUNK: Verzamelen, Badges & Eigen Selectie ---
 
-        const CUSTOM = -1;              // currentLevelIndex voor "Eigen selectie"
         // Elk element heeft een status: 0 = niet verzameld, 1 = half verzameld, 2 = verzameld
         // Goed antwoord = één stap omhoog, fout antwoord = één stap omlaag
         const NIET = 0, HALF = 1, VERZAMELD = 2;
@@ -671,14 +659,10 @@
         });
         const alleSymbolen = periodicTableData.map(e => e[1]);
 
-        // De mooie kleuren uit de niveaus houden we; andere elementen krijgen een berekende kleur
-        const levelKleur = {};
-        levels.flat().forEach(item => levelKleur[item.sym] = item.color);
-
         function elementItem(sym) {
             const el = elementBySym[sym];
             // Gulden-hoek truc: elk atoomnummer krijgt een duidelijk andere tint
-            const kleur = levelKleur[sym] || `hsl(${Math.round((el.num * 137.508) % 360)}, 85%, 65%)`;
+            const kleur = `hsl(${Math.round((el.num * 137.508) % 360)}, 85%, 65%)`;
             return { sym, name: el.name, color: kleur };
         }
 
@@ -699,17 +683,84 @@
         function aantalHalf() { return alleSymbolen.filter(isHalf).length; }
         const elementTekst = (sym) => `<span class="element-font">${sym}</span> – ${elementBySym[sym].name}`;
 
+        // Alle symbolen die aan een voorwaarde voldoen, gesorteerd op atoomnummer
+        const symsWaar = (test) => periodicTableData
+            .filter(e => test(elementBySym[e[1]]))
+            .sort((a, b) => a[0] - b[0])
+            .map(e => e[1]);
+
+        // --- De 6 gebieden, ingedeeld op de kleuren van het periodiek systeem ---
+        // Les 1 = eerste helft (op atoomnummer), Les 2 = tweede helft, Toets = alles
+        const gebieden = [
+            {
+                naam: 'Moleculen', icon: '💨', kleur: '#82E0AA',
+                syms: symsWaar(e => e.cat === 'diatomic' || e.cat === 'polyatomic'),
+                tip: 'H, N, O, F, Cl, Br en I komen in de natuur voor als <b>molecuul van twee atomen</b>: H₂, N₂, O₂, F₂, Cl₂, Br₂ en I₂. C, P, S en Se zijn andere niet-metalen.'
+            },
+            {
+                naam: 'Overgangsmetalen I', icon: '🔩', kleur: '#85C1E9',
+                syms: symsWaar(e => e.cat === 'transition' && e.row <= 5),
+                tip: 'De overgangsmetalen van <b>rij 4 en 5</b>. Let op de symbolen die uit het Latijn komen: <b>Fe</b> = ferrum (ijzer), <b>Cu</b> = cuprum (koper) en <b>Ag</b> = argentum (zilver).'
+            },
+            {
+                naam: 'Overgangsmetalen II', icon: '👑', kleur: '#85C1E9',
+                syms: symsWaar(e => e.cat === 'transition' && e.row >= 6),
+                tip: 'De overgangsmetalen van <b>rij 6 en 7</b>. <b>Au</b> = aurum (goud), <b>Hg</b> = hydrargyrum (kwik), <b>W</b> = wolfram. De elementen uit rij 7 zijn in een lab gemaakt en vaak vernoemd naar wetenschappers, zoals Rutherford (Rf) en Bohr (Bh).'
+            },
+            {
+                naam: 'Edelgassen', icon: '🎈', kleur: '#F5B7B1',
+                syms: symsWaar(e => e.cat === 'noble'),
+                tip: 'De edelgassen staan in <b>groep 18</b>, de laatste kolom. Ze reageren (bijna) nergens mee. Helium zit in ballonnen, neon in lichtreclames.'
+            },
+            {
+                naam: 'Reactieve metalen', icon: '💥', kleur: '#E67E22',
+                syms: symsWaar(e => e.cat === 'alkali' || e.cat === 'alkaline'),
+                tip: '<b>Groep 1</b> zijn de alkalimetalen, <b>groep 2</b> de aardalkalimetalen. Ze reageren heftig, natrium en kalium zelfs met water! Let op: <b>Na</b> = natrium, <b>K</b> = kalium.'
+            },
+            {
+                naam: 'Lanthaniden & Actiniden', icon: '☢️', kleur: '#3498DB',
+                syms: symsWaar(e => e.cat === 'lanthanide' || e.cat === 'actinide'),
+                tip: 'De twee <b>losse rijen onderaan</b> het periodiek systeem (57 t/m 71 en 89 t/m 103). Veel actiniden zijn radioactief, zoals uranium (U) en plutonium (Pu).'
+            },
+        ];
+        const LES_NAMEN = ['Les 1', 'Les 2', 'Toets'];
+        const MAX_PER_RONDE = 8;
+
+        function lesSyms(g, les) {
+            const syms = gebieden[g].syms;
+            const helft = Math.ceil(syms.length / 2);
+            if (les === 0) return syms.slice(0, helft);
+            if (les === 1) return syms.slice(helft);
+            return syms; // Toets: alles
+        }
+
+        // Verdeel elementen over rondes van max 8, zo gelijk mogelijk (bijv. 15 → 8 + 7)
+        function maakRondes(syms) {
+            const gehusseld = shuffleArray(syms);
+            const aantal = Math.ceil(gehusseld.length / MAX_PER_RONDE);
+            const result = [];
+            for (let r = 0; r < aantal; r++) result.push(gehusseld.filter((_, i) => i % aantal === r));
+            return result;
+        }
+
+        // Welke lessen heb je gehaald? Bewaard als { "0-0": 3, "0-1": 2 } (aantal sterren)
+        const LEVELS_SLEUTEL = 'labmatch-gebieden';
+        let levelSterren = {};
+        try { levelSterren = JSON.parse(localStorage.getItem(LEVELS_SLEUTEL)) || {}; } catch (e) {}
+        function bewaarLevels() {
+            try { localStorage.setItem(LEVELS_SLEUTEL, JSON.stringify(levelSterren)); } catch (e) {}
+        }
+        const sterrenVan = (g, les) => levelSterren[`${g}-${les}`] || 0;
+        const isGehaald = (g, les) => sterrenVan(g, les) > 0;
+        const isGebiedOpen = (g) => g === 0 || isGehaald(g - 1, 2);
+        const isLesOpen = (g, les) => isGebiedOpen(g) && (les === 0 || isGehaald(g, les - 1));
+        const sterrenTekst = (n) => '⭐'.repeat(n) + '☆'.repeat(MAX_LEVENS - n);
+
         // Badges: verdien je als alle elementen uit de groep verzameld zijn
-        const symsWaar = (test) => periodicTableData.filter(e => test(elementBySym[e[1]])).map(e => e[1]);
         const badges = [
-            { icon: '🧪', naam: 'Niveau 1 compleet', syms: levels[0].map(i => i.sym) },
-            { icon: '🔬', naam: 'Niveau 2 compleet', syms: levels[1].map(i => i.sym) },
-            { icon: '⚗️', naam: 'Niveau 3 compleet', syms: levels[2].map(i => i.sym) },
-            { icon: '🎈', naam: 'Edelgassen',        syms: symsWaar(e => e.col === 18 && e.row <= 6) },
-            { icon: '💥', naam: 'Alkalimetalen',     syms: symsWaar(e => e.cat === 'alkali' && e.row <= 6) },
-            { icon: '🪨', naam: 'Aardalkalimetalen', syms: symsWaar(e => e.cat === 'alkaline' && e.row <= 6) },
-            { icon: '🧂', naam: 'Halogenen',         syms: ['F', 'Cl', 'Br', 'I'] },
-            { icon: '🧱', naam: 'Rij 1 t/m 3',       syms: symsWaar(e => e.num <= 18) },
+            ...gebieden.map(g => ({ icon: g.icon, naam: g.naam, syms: g.syms })),
+            { icon: '🧂', naam: 'Halogenen',   syms: ['F', 'Cl', 'Br', 'I'] },
+            { icon: '🧱', naam: 'Rij 1 t/m 3', syms: symsWaar(e => e.num <= 18) },
         ];
         function badgeVerdiend(badge) { return badge.syms.every(isVerzameld); }
 
@@ -773,13 +824,9 @@
 
         // Snelkeuze-knoppen om een heel deel in één keer te selecteren
         const selectieGroepen = [
-            { label: 'Rij 1 t/m 3',        syms: () => symsWaar(e => e.num <= 18) },
-            { label: 'Rij 4',              syms: () => symsWaar(e => e.row === 4) },
-            { label: 'Alkalimetalen',      syms: () => symsWaar(e => e.cat === 'alkali' && e.row <= 6) },
-            { label: 'Aardalkalimetalen',  syms: () => symsWaar(e => e.cat === 'alkaline' && e.row <= 6) },
-            { label: 'Halogenen',          syms: () => ['F', 'Cl', 'Br', 'I'] },
-            { label: 'Edelgassen',         syms: () => symsWaar(e => e.col === 18 && e.row <= 6) },
-            { label: 'Overgangsmetalen',   syms: () => symsWaar(e => e.cat === 'transition' && e.row <= 6) },
+            ...gebieden.map(g => ({ label: `${g.icon} ${g.naam}`, syms: () => g.syms })),
+            { label: '🧂 Halogenen',          syms: () => ['F', 'Cl', 'Br', 'I'] },
+            { label: '🧱 Rij 1 t/m 3',        syms: () => symsWaar(e => e.num <= 18) },
             { label: '✨ Nog niet verzameld', syms: () => alleSymbolen.filter(s => !isVerzameld(s)) },
         ];
 
@@ -899,11 +946,7 @@
             ptModus = modus;
             const kiezen = modus === 'kiezen';
 
-            introContainer.classList.add('hidden');
-            levelSelection.classList.remove('flex');
-            levelSelection.classList.add('hidden');
-            elementSelection.classList.remove('flex');
-            elementSelection.classList.add('hidden');
+            verbergStartSchermen();
 
             document.getElementById('pt-title').innerText = kiezen ? '🎯 Kies wat je wilt oefenen' : 'Periodiek Systeem der Elementen';
             document.getElementById('pt-subtitle').innerText = kiezen
@@ -925,15 +968,112 @@
             startScreen.scrollTop = 0;
         }
 
-        function toonNiveauKeuze() {
-            periodicTableScreen.classList.remove('flex');
-            periodicTableScreen.classList.add('hidden');
-            elementSelection.classList.remove('flex');
-            elementSelection.classList.add('hidden');
-            document.getElementById('level-collected-count').innerText = aantalVerzameld();
-            levelSelection.classList.remove('hidden');
-            levelSelection.classList.add('flex');
+        // Verberg alle schermen binnen het startscherm
+        function verbergStartSchermen() {
+            [introContainer, periodicTableScreen, levelSelection, elementSelection, levelIntro].forEach(el => {
+                el.classList.remove('flex');
+                el.classList.add('hidden');
+            });
+        }
+        function toonStartScherm(el) {
+            verbergStartSchermen();
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+            startScreen.classList.remove('hidden');
             startScreen.scrollTop = 0;
+        }
+
+        // De kaart met gebieden
+        function toonNiveauKeuze() {
+            document.getElementById('level-collected-count').innerText = aantalVerzameld();
+            renderKaart();
+            toonStartScherm(levelSelection);
+        }
+
+        function renderKaart() {
+            const kaart = document.getElementById('gebieden-kaart');
+            kaart.innerHTML = '';
+            gebieden.forEach((gebied, g) => {
+                const open = isGebiedOpen(g);
+                const verzameld = gebied.syms.filter(isVerzameld).length;
+                const voltooid = isGehaald(g, 2);
+
+                const card = document.createElement('div');
+                card.className = 'gebied-kaart' + (open ? '' : ' locked');
+                card.style.setProperty('--kleur', gebied.kleur);
+
+                // Laat max 12 symbolen zien, de rest als "+18"
+                const preview = gebied.syms.slice(0, 12).map(s => `<span class="mini-sym">${s}</span>`).join('')
+                    + (gebied.syms.length > 12 ? `<span class="text-xs text-gray-400 font-bold">+${gebied.syms.length - 12}</span>` : '');
+
+                // Les 1, Les 2, Toets knoppen
+                let volgendeGevonden = false;
+                const knoppen = LES_NAMEN.map((naam, les) => {
+                    const lesOpen = isLesOpen(g, les);
+                    const gehaald = isGehaald(g, les);
+                    let klasse = 'les-btn';
+                    if (gehaald) klasse += ' gehaald';
+                    else if (lesOpen && !volgendeGevonden) { klasse += ' volgende'; volgendeGevonden = true; }
+                    const label = les === 2 ? '📝 Toets' : naam;
+                    const onder = gehaald ? sterrenTekst(sterrenVan(g, les)) : (lesOpen ? 'Speel!' : '🔒');
+                    return `<button class="${klasse}" data-g="${g}" data-les="${les}" ${lesOpen ? '' : 'disabled'}>
+                                ${label}<span class="sterren">${onder}</span>
+                            </button>`;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="kaart-inhoud">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="gebied-nr">${g + 1}</span>
+                            <span class="text-3xl">${gebied.icon}</span>
+                            <div class="flex-1">
+                                <div class="font-bold text-lg leading-tight">${gebied.naam}${voltooid ? ' ✅' : ''}</div>
+                                <div class="text-xs text-gray-400">${gebied.syms.length} elementen · ⭐ ${verzameld}/${gebied.syms.length} verzameld</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-1 mb-3">${preview}</div>
+                        <div class="grid grid-cols-3 gap-2">${knoppen}</div>
+                    </div>
+                    ${open ? '' : `<div class="slot-overlay"><span class="text-4xl">🔒</span>${gebied.naam}<span class="text-xs text-gray-400 font-semibold">Haal eerst de toets van gebied ${g}</span></div>`}
+                `;
+                kaart.appendChild(card);
+            });
+
+            kaart.querySelectorAll('.les-btn:not(:disabled)').forEach(btn => {
+                btn.addEventListener('click', () => toonLesIntro(parseInt(btn.dataset.g), parseInt(btn.dataset.les)));
+            });
+        }
+
+        // Intro-scherm vóór een les: tip + welke elementen je gaat oefenen
+        function toonLesIntro(g, les) {
+            spelModus = 'gebied';
+            huidigGebied = g;
+            huidigeLes = les;
+            const gebied = gebieden[g];
+            const syms = lesSyms(g, les);
+            const aantalRondes = Math.ceil(syms.length / MAX_PER_RONDE);
+            const isToets = les === 2;
+
+            document.getElementById('intro-gebied').innerText = `Gebied ${g + 1} · ${gebied.icon} ${gebied.naam}`;
+            document.getElementById('intro-titel').innerText = isToets ? '📝 Toets' : LES_NAMEN[les];
+            const tip = document.getElementById('intro-tip');
+            tip.style.borderColor = gebied.kleur;
+            tip.innerHTML = `💡 ${gebied.tip}`;
+
+            document.getElementById('intro-uitleg').innerHTML =
+                (isToets ? 'Alle elementen van dit gebied. Geen spiekbriefje dit keer 😉 ' : 'Bestudeer deze elementen goed! ')
+                + `<b>${syms.length} elementen</b>` + (aantalRondes > 1 ? ` in <b>${aantalRondes} rondes</b>.` : '.')
+                + ` Je hebt ${MAX_LEVENS} veiligheidsbrillen voor de hele ${isToets ? 'toets' : 'les'}.`;
+
+            document.getElementById('intro-elementen').innerHTML = syms.map(sym => {
+                const el = elementBySym[sym];
+                return `<div class="intro-el cat-${el.cat}">
+                            <span class="element-font text-xl font-black">${sym}</span>
+                            <span class="naam">${isToets ? '?' : el.name}</span>
+                        </div>`;
+            }).join('');
+
+            toonStartScherm(levelIntro);
         }
 
         // --- STREAMING_CHUNK: Game Flow (Start, Render, Reset) ---
@@ -997,13 +1137,12 @@
             elementSelection.classList.add('flex');
         }
 
-        // Event listeners voor de Protocol (level) knoppen
-        document.querySelectorAll('.level-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                currentLevelIndex = parseInt(e.currentTarget.dataset.level);
-                toonHoeveelheidKeuze(levels[currentLevelIndex].length);
-            });
+        // Les-intro knoppen
+        document.getElementById('intro-start-btn').addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            startSpel();
         });
+        document.getElementById('intro-terug-btn').addEventListener('click', toonNiveauKeuze);
 
         // Eigen selectie: open het periodiek systeem in kies-modus
         document.getElementById('custom-level-btn').addEventListener('click', () => toonPeriodiekSysteem('kiezen'));
@@ -1011,49 +1150,37 @@
 
         document.getElementById('pt-practice-btn').addEventListener('click', () => {
             if (eigenSelectie.size < 2) return;
-            currentLevelIndex = CUSTOM;
+            spelModus = 'eigen';
             if (eigenSelectie.size <= 4) {
                 // Weinig gekozen? Dan meteen spelen met allemaal
+                eigenAantal = eigenSelectie.size;
                 startScreen.classList.add('hidden');
-                startNewGame(CUSTOM, eigenSelectie.size);
+                startSpel();
             } else {
                 toonHoeveelheidKeuze(eigenSelectie.size);
             }
         });
 
-        // Event listeners voor de Hoeveelheid knoppen
+        // Event listeners voor de Hoeveelheid knoppen (alleen bij eigen selectie)
         document.querySelectorAll('.amount-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const amount = parseInt(e.currentTarget.dataset.amount);
+                eigenAantal = Math.min(parseInt(e.currentTarget.dataset.amount), eigenSelectie.size);
                 startScreen.classList.add('hidden');
-                startNewGame(currentLevelIndex, amount);
+                startSpel();
             });
         });
 
-        // Terug knop (naar niveaus, of naar je selectie als je "Eigen" koos)
-        document.getElementById('back-to-levels-btn').addEventListener('click', () => {
-            if (currentLevelIndex === CUSTOM) toonPeriodiekSysteem('kiezen');
-            else toonNiveauKeuze();
-        });
+        // Terug knop: naar je selectie
+        document.getElementById('back-to-levels-btn').addEventListener('click', () => toonPeriodiekSysteem('kiezen'));
 
         document.getElementById('restart-btn').addEventListener('click', () => {
             gameOverScreen.classList.add('hidden');
-            startNewGame(currentLevelIndex, currentElementCount); // Herstart huidige level met dezelfde hoeveelheid
+            startSpel(); // Les opnieuw vanaf ronde 1, met volle brillen
         });
 
         document.getElementById('next-level-btn').addEventListener('click', () => {
             levelCompleteScreen.classList.add('hidden');
-            if (currentLevelIndex === CUSTOM) {
-                startLevel(); // Nieuwe ronde met elementen uit je eigen selectie
-                return;
-            }
-            if (currentLevelIndex >= levels.length - 1) {
-                // Alles uitgespeeld: begin opnieuw bij level 1 met nieuwe score en levens
-                startNewGame(0, currentElementCount);
-                return;
-            }
-            currentLevelIndex++;
-            startLevel(); // Behoud score en levens, start alleen volgend level bord
+            if (volgendeActie) volgendeActie();
         });
 
         // Terug naar menu knoppen
@@ -1069,11 +1196,7 @@
             isAnimating = false; // Reset animatie blokkade
             if (draggedTube) draggedTube.remove(); // Verwijder buisje als we tijdens het slepen op terug klikken
             
-            // Toon start scherm
-            startScreen.classList.remove('hidden');
-            
-            // Toon level selectie (zodat spelers niet steeds het intro scherm hoeven te doorlopen)
-            introContainer.classList.add('hidden');
+            // Terug naar de kaart
             toonNiveauKeuze();
         };
         
@@ -1095,21 +1218,30 @@
             returnToMenu();
         });
 
-        // Start een compleet nieuw spel (reset score en levens)
-        function startNewGame(levelIndex, amount) {
-            currentLevelIndex = levelIndex;
-            // Nooit meer elementen dan er in de selectie zitten
-            const poolGrootte = levelIndex === CUSTOM ? eigenSelectie.size : levels[levelIndex].length;
-            currentElementCount = Math.min(amount, poolGrootte);
+        // Kies elementen uit je eigen selectie: die je het minst goed kent komen eerst
+        function kiesEigenRonde() {
+            return shuffleArray([...eigenSelectie])
+                .sort((a, b) => status(a) - status(b))
+                .slice(0, eigenAantal);
+        }
+
+        // Start een les (of eigen selectie) vanaf het begin: score en brillen resetten
+        function startSpel() {
             score = 0;
             lives = MAX_LEVENS;
-            updateUI();
-            startLevel();
+            rondeIndex = 0;
+            rondes = spelModus === 'eigen' ? [kiesEigenRonde()] : maakRondes(lesSyms(huidigGebied, huidigeLes));
+            startRonde();
         }
 
         function updateUI() {
             uiScore.innerText = score;
-            uiLevel.innerText = currentLevelIndex === CUSTOM ? 'Eigen selectie' : 'Level ' + (currentLevelIndex + 1);
+            if (spelModus === 'eigen') {
+                uiLevel.innerText = 'Eigen selectie';
+            } else {
+                uiLevel.innerText = `Gebied ${huidigGebied + 1} · ${LES_NAMEN[huidigeLes]}`
+                    + (rondes.length > 1 ? ` · Ronde ${rondeIndex + 1}/${rondes.length}` : '');
+            }
             
             uiLives.innerHTML = '';
             for(let i=0; i<MAX_LEVENS; i++) {
@@ -1183,23 +1315,15 @@
 
         // --- STREAMING_CHUNK: Level rendering ---
 
-        function startLevel() {
+        function startRonde() {
             matchedInLevel = 0;
             tubeRack.innerHTML = '';
             flaskTable.innerHTML = '';
             updateUI();
 
-            // Pak willekeurige elementen uit het geselecteerde level
-            let fullLevelData;
-            if (currentLevelIndex === CUSTOM) {
-                // Eigen selectie: elementen die je het minst vaak goed had komen eerst aan de beurt
-                fullLevelData = shuffleArray([...eigenSelectie].map(elementItem))
-                    .sort((a, b) => status(a.sym) - status(b.sym));
-            } else {
-                fullLevelData = shuffleArray(levels[currentLevelIndex]);
-            }
-            // Snijd de array af op de gekozen hoeveelheid (4, 6 of 8)
-            const levelData = fullLevelData.slice(0, currentElementCount);
+            // De elementen van deze ronde
+            huidigBord = rondes[rondeIndex].map(elementItem);
+            const levelData = huidigBord;
             
             // Maak reageerbuisjes (geshuffeld)
             const tubes = shuffleArray(levelData);
@@ -1549,28 +1673,62 @@
             shuffled.forEach(t => tubeRack.appendChild(t));
         }
 
+        function toonGehaaldScherm(titel, sterren, tekst, knopTekst, actie) {
+            levelCompleteTitle.innerText = titel;
+            document.getElementById('level-complete-stars').innerText = sterren ? sterrenTekst(sterren) : '';
+            levelCompleteText.innerHTML = tekst;
+            nextLevelBtn.innerText = knopTekst;
+            volgendeActie = actie;
+            levelCompleteScreen.classList.remove('hidden');
+        }
+
         function checkLevelEnd() {
-            // Nu controleren we of de gematchte elementen gelijk is aan de gekozen hoeveelheid
-            if (matchedInLevel === currentElementCount) {
-                const isLaatsteLevel = currentLevelIndex >= levels.length - 1;
-                setTimeout(() => {
-                    if (currentLevelIndex === CUSTOM) {
-                        levelCompleteTitle.innerText = 'Netjes!';
-                        levelCompleteText.innerHTML = `Ronde voltooid! Je verzameling: <span class="text-yellow-400 font-bold">🏆 ${aantalVerzameld()} / ${alleSymbolen.length}</span>`;
-                        nextLevelBtn.innerText = 'Nieuwe ronde';
-                    } else if (isLaatsteLevel) {
-                        // Alles uitgespeeld: toon eindscherm
-                        levelCompleteTitle.innerText = 'Je hebt alles uitgespeeld! 🏆';
-                        levelCompleteText.innerHTML = `Je bent nu een echte scheikundige! Eindscore: <span class="text-yellow-400 font-bold">${score}</span>`;
-                        nextLevelBtn.innerText = 'Opnieuw spelen';
-                    } else {
-                        levelCompleteTitle.innerText = 'Netjes!';
-                        levelCompleteText.innerText = 'Level voltooid. Maak je klaar voor de volgende reacties.';
-                        nextLevelBtn.innerText = 'Volgend Level';
-                    }
-                    levelCompleteScreen.classList.remove('hidden');
-                }, 500);
-            }
+            if (matchedInLevel !== huidigBord.length) return;
+
+            setTimeout(() => {
+                const verzamelTekst = `Je verzameling: <span class="text-yellow-400 font-bold">🏆 ${aantalVerzameld()} / ${alleSymbolen.length}</span>`;
+
+                // Eigen selectie: gewoon nog een ronde
+                if (spelModus === 'eigen') {
+                    toonGehaaldScherm('Netjes!', 0, `Ronde voltooid! ${verzamelTekst}`, 'Nieuwe ronde', () => {
+                        rondes = [kiesEigenRonde()];
+                        rondeIndex = 0;
+                        startRonde();
+                    });
+                    return;
+                }
+
+                // Nog rondes over in deze les? Door naar de volgende (brillen en score blijven)
+                if (rondeIndex < rondes.length - 1) {
+                    toonGehaaldScherm(`Ronde ${rondeIndex + 1}/${rondes.length} klaar!`, 0,
+                        'Goed bezig! Op naar de volgende ronde.', 'Volgende ronde ▶', () => {
+                            rondeIndex++;
+                            startRonde();
+                        });
+                    return;
+                }
+
+                // Les gehaald! Sterren = aantal brillen dat je over hebt (beste score telt)
+                const g = huidigGebied, les = huidigeLes;
+                const sleutel = `${g}-${les}`;
+                levelSterren[sleutel] = Math.max(levelSterren[sleutel] || 0, lives);
+                bewaarLevels();
+
+                if (les < 2) {
+                    toonGehaaldScherm(`${LES_NAMEN[les]} gehaald! 🎉`, lives,
+                        `Score: <b>${score}</b><br>Op naar ${les === 0 ? 'Les 2' : 'de Toets'}!`,
+                        `Verder: ${LES_NAMEN[les + 1]} ▶`, () => toonLesIntro(g, les + 1));
+                } else if (g < gebieden.length - 1) {
+                    const volgend = gebieden[g + 1];
+                    toonGehaaldScherm(`${gebieden[g].icon} ${gebieden[g].naam} voltooid!`, lives,
+                        `🔓 Gebied ${g + 2}: <b>${volgend.icon} ${volgend.naam}</b> is vrijgespeeld!<br>${verzamelTekst}`,
+                        `Naar gebied ${g + 2} ▶`, () => toonLesIntro(g + 1, 0));
+                } else {
+                    toonGehaaldScherm('Je hebt alle gebieden uitgespeeld! 🏆', lives,
+                        `Je bent nu een echte scheikundige!<br>${verzamelTekst}`,
+                        'Naar de kaart 🗺️', toonNiveauKeuze);
+                }
+            }, 500);
         }
 
         function gameOver() {
