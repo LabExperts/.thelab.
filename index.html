@@ -836,7 +836,38 @@
         let studeerModus = false;   // true = alle kleuren tonen, ook niet-verzamelde
 
         // Snelkeuze-knoppen om een heel deel in één keer te selecteren
+        // Vorige eigen selectie en "laatst fout"-lijst worden bewaard in localStorage
+        const SELECTIE_SLEUTEL = 'labmatch-vorige-selectie';
+        const FOUTEN_SLEUTEL = 'labmatch-laatst-fout';
+        const MAX_FOUTEN = 12;
+        function laadLijst(sleutel) {
+            try { return JSON.parse(localStorage.getItem(sleutel)) || []; } catch (e) { return []; }
+        }
+        function bewaarLijst(sleutel, lijst) {
+            try { localStorage.setItem(sleutel, JSON.stringify(lijst)); } catch (e) {}
+        }
+        let vorigeSelectie = laadLijst(SELECTIE_SLEUTEL);
+        let laatstFout = laadLijst(FOUTEN_SLEUTEL); // nieuwste fout vooraan
+
+        // Fout? Dan komt het element (bovenaan) in de lijst
+        function onthoudFout(sym) {
+            foutInDezeRonde.add(sym);
+            laatstFout = [sym, ...laatstFout.filter(s => s !== sym)].slice(0, MAX_FOUTEN);
+            bewaarLijst(FOUTEN_SLEUTEL, laatstFout);
+        }
+        // Elementen die je in de huidige ronde al fout had (die tellen nog niet als "weer gekend")
+        let foutInDezeRonde = new Set();
+
+        // In één keer goed? Dan gaat het element van de lijst af: je kent hem weer
+        function vergeetFout(sym) {
+            if (foutInDezeRonde.has(sym) || !laatstFout.includes(sym)) return;
+            laatstFout = laatstFout.filter(s => s !== sym);
+            bewaarLijst(FOUTEN_SLEUTEL, laatstFout);
+        }
+
         const selectieGroepen = [
+            { label: () => `↺ Vorige selectie (${vorigeSelectie.length})`, syms: () => vorigeSelectie, verbergAlsLeeg: true },
+            { label: () => `❌ Laatst fout (${laatstFout.length})`,         syms: () => laatstFout,     verbergAlsLeeg: true },
             ...gebieden.map(g => ({ label: `${g.icon} ${g.naam}`, syms: () => g.syms })),
             { label: '🧂 Halogenen',          syms: () => ['F', 'Cl', 'Br', 'I'] },
             { label: '🧱 Rij 1 t/m 3',        syms: () => symsWaar(e => e.num <= 18) },
@@ -848,10 +879,11 @@
             container.innerHTML = '';
             selectieGroepen.forEach(groep => {
                 const syms = groep.syms();
+                if (groep.verbergAlsLeeg && syms.length === 0) return; // niets om te laten zien
                 const alles = syms.length > 0 && syms.every(s => eigenSelectie.has(s));
                 const chip = document.createElement('button');
                 chip.className = 'chip' + (alles ? ' chip-active' : '');
-                chip.innerText = groep.label;
+                chip.innerText = typeof groep.label === 'function' ? groep.label() : groep.label;
                 chip.addEventListener('click', () => {
                     // Klik = hele groep erbij; nog een keer klikken = hele groep eraf
                     syms.forEach(s => alles ? eigenSelectie.delete(s) : eigenSelectie.add(s));
@@ -1177,6 +1209,9 @@
         document.getElementById('pt-practice-btn').addEventListener('click', () => {
             if (eigenSelectie.size < 2) return;
             spelModus = 'eigen';
+            // Bewaar deze selectie, zodat je hem later met één klik opnieuw kunt kiezen
+            vorigeSelectie = [...eigenSelectie];
+            bewaarLijst(SELECTIE_SLEUTEL, vorigeSelectie);
             if (eigenSelectie.size <= 4) {
                 // Weinig gekozen? Dan meteen spelen met allemaal
                 eigenAantal = eigenSelectie.size;
@@ -1358,8 +1393,7 @@
                 const isToets = huidigeLes === 2;
                 startKlok(isToets ? toetsTijdMs(lesSyms(huidigGebied, huidigeLes).length) : 0);
             } else {
-                verbergKlok();
-                tijdOp = false;
+                tijdOp = false; // bij eigen selectie start startRonde() de klok per ronde
             }
             startRonde();
         }
@@ -1452,7 +1486,9 @@
         // --- STREAMING_CHUNK: Level rendering ---
 
         function startRonde() {
-            hervatKlok(); // na het "ronde klaar"-scherm loopt de klok weer
+            foutInDezeRonde = new Set();
+            if (spelModus === 'eigen') startKlok(0); // eigen selectie: stopwatch per ronde, begint bij 0:00
+            else hervatKlok();                       // les: na het "ronde klaar"-scherm loopt de klok weer
             matchedInLevel = 0;
             tubeRack.innerHTML = '';
             flaskTable.innerHTML = '';
@@ -1714,6 +1750,7 @@
                 score += PUNTEN_PER_GOED;
                 matchedInLevel++;
                 registreerGoed(tube.dataset.symbol); // Telt mee voor je verzameling
+                vergeetFout(tube.dataset.symbol);    // In één keer goed: van de "Laatst fout"-lijst af
                 
                 // Activeer één van de 5 willekeurige feest effecten!
                 playRandomGoodEffect(flask, tube.dataset.color);
@@ -1746,6 +1783,7 @@
                 lives--;
                 breakGoggle();
                 registreerFout(tube.dataset.symbol); // Element van het buisje zakt een stap
+                onthoudFout(tube.dataset.symbol);    // Komt op de "Laatst fout"-lijst
                 // Wacht tot de bril-animatie (0,5 s) klaar is voordat de brillen opnieuw getekend worden
                 setTimeout(updateUI, 550);
 
@@ -1880,10 +1918,8 @@
             // Klok direct stilzetten, zodat het wachten op het scherm niet meetelt
             const laatsteRonde = rondeIndex >= rondes.length - 1;
             let gebruikteTijd = 0;
-            if (spelModus === 'gebied') {
-                if (laatsteRonde) gebruikteTijd = stopKlok();
-                else pauzeerKlok();
-            }
+            if (spelModus === 'eigen' || laatsteRonde) gebruikteTijd = stopKlok();
+            else pauzeerKlok();
 
             setTimeout(() => {
                 if (tijdOp) return;
@@ -1891,7 +1927,17 @@
 
                 // Eigen selectie: gewoon nog een ronde
                 if (spelModus === 'eigen') {
-                    toonGehaaldScherm('Netjes!', 0, `Ronde voltooid! ${verzamelTekst}`, 'Nieuwe ronde', () => {
+                    // Record per selectie + aantal per ronde, zodat je eerlijk vergelijkt
+                    const sleutel = 'eigen:' + [...eigenSelectie].sort().join(',') + '|' + eigenAantal;
+                    const vorig = records[sleutel];
+                    let recordTekst;
+                    if (!vorig) recordTekst = '<span class="text-gray-300">Eerste tijd voor deze selectie</span>';
+                    else if (gebruikteTijd < vorig) recordTekst = `<span class="text-yellow-300 font-bold">🏅 Sneller dan je beste ronde (${formatTijd(vorig)})!</span>`;
+                    else recordTekst = `Beste ronde: ${formatTijd(vorig)}`;
+                    if (!vorig || gebruikteTijd < vorig) { records[sleutel] = Math.round(gebruikteTijd); bewaarRecords(); }
+
+                    toonGehaaldScherm('Netjes!', 0,
+                        `Ronde voltooid in ⏱️ <b>${formatTijd(gebruikteTijd)}</b><br>${recordTekst}<br>${verzamelTekst}`, 'Nieuwe ronde', () => {
                         rondes = [kiesEigenRonde()];
                         rondeIndex = 0;
                         startRonde();
