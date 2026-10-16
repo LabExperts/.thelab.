@@ -274,6 +274,7 @@
         .les-btn.volgende { background: var(--kleur); color: #111; border-color: white; box-shadow: 0 0 14px var(--kleur); animation: pulse 2s infinite; }
         .les-btn.gehaald { border-color: #22c55e; background: #14532d; }
         .les-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .klok-alarm { color: #f87171 !important; animation: pulse 1s infinite; }
         .intro-el { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 72px; height: 60px; border-radius: 6px; }
         .intro-el .naam { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; }
 
@@ -421,8 +422,8 @@
 
     <!-- Game Over Overlay -->
     <div id="game-over-screen" class="absolute inset-0 bg-red-900 bg-opacity-95 z-50 flex flex-col items-center justify-center hidden">
-        <h1 class="text-6xl font-bold mb-4 text-white drop-shadow-lg">KABOEM!</h1>
-        <p class="text-2xl text-gray-200 mb-8">Je veiligheidsbrillen zijn op...</p>
+        <h1 id="game-over-title" class="text-6xl font-bold mb-4 text-white drop-shadow-lg">KABOEM!</h1>
+        <p id="game-over-text" class="text-2xl text-gray-200 mb-8 text-center px-4">Je veiligheidsbrillen zijn op...</p>
         <p class="text-xl text-gray-300 mb-8">Eindscore: <span id="final-score" class="font-bold text-yellow-400">0</span></p>
         <div class="flex flex-col md:flex-row gap-4">
             <button id="restart-btn" class="bg-white hover:bg-gray-200 text-red-900 font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-110">
@@ -478,6 +479,11 @@
                 <span class="text-gray-400 text-sm font-bold uppercase tracking-wider"><span id="ui-level"></span></span>
                 <span class="text-2xl font-bold text-yellow-400">Score: <span id="ui-score">0</span></span>
             </div>
+        </div>
+        <!-- Klok: stopwatch bij Les 1/2, aftellen bij de Toets -->
+        <div id="ui-klok" class="hidden flex-col items-center">
+            <span id="ui-klok-label" class="text-gray-400 text-xs font-bold uppercase tracking-wider">Tijd</span>
+            <span id="ui-klok-tijd" class="element-font text-3xl font-bold text-cyan-300">0:00</span>
         </div>
         <div class="flex flex-col items-end">
             <span class="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">Veiligheid</span>
@@ -1030,7 +1036,10 @@
                     if (gehaald) klasse += ' gehaald';
                     else if (lesOpen && !volgendeGevonden) { klasse += ' volgende'; volgendeGevonden = true; }
                     const label = les === 2 ? '📝 Toets' : naam;
-                    const onder = gehaald ? sterrenTekst(sterrenVan(g, les)) : (lesOpen ? 'Speel!' : '🔒');
+                    const record = records[`${g}-${les}`];
+                    const onder = gehaald
+                        ? sterrenTekst(sterrenVan(g, les)) + (record ? `<span class="block text-[10px] opacity-80 font-semibold">⏱️ ${formatTijd(record)}</span>` : '')
+                        : (lesOpen ? 'Speel!' : '🔒');
                     return `<button class="${klasse}" data-g="${g}" data-les="${les}" ${lesOpen ? '' : 'disabled'}>
                                 ${label}<span class="sterren">${onder}</span>
                             </button>`;
@@ -1077,7 +1086,10 @@
             document.getElementById('intro-uitleg').innerHTML =
                 (isToets ? 'Alle elementen van dit gebied. Geen spiekbriefje dit keer 😉 ' : 'Bestudeer deze elementen goed! ')
                 + `<b>${syms.length} elementen</b>` + (aantalRondes > 1 ? ` in <b>${aantalRondes} rondes</b>.` : '.')
-                + ` Je hebt ${MAX_LEVENS} veiligheidsbrillen voor de hele ${isToets ? 'toets' : 'les'}.`;
+                + ` Je hebt ${MAX_LEVENS} veiligheidsbrillen voor de hele ${isToets ? 'toets' : 'les'}.`
+                + (isToets
+                    ? `<br><span class="text-red-300 font-bold">⏰ Je hebt ${formatTijd(toetsTijdMs(syms.length))} voor deze toets. Is de tijd op, dan is de toets niet gehaald.</span>`
+                    : `<br><span class="text-cyan-300 font-bold">⏱️ De klok loopt mee${records[`${g}-${les}`] ? ` · jouw record: ${formatTijd(records[`${g}-${les}`])}` : ''}. Kun je sneller?</span>`);
 
             document.getElementById('intro-elementen').innerHTML = syms.map(sym => {
                 const el = elementBySym[sym];
@@ -1209,6 +1221,7 @@
             flaskTable.innerHTML = '';
             isAnimating = false; // Reset animatie blokkade
             if (draggedTube) draggedTube.remove(); // Verwijder buisje als we tijdens het slepen op terug klikken
+            verbergKlok(); // Geen klok die op de achtergrond doortikt
             
             // Terug naar de kaart
             toonNiveauKeuze();
@@ -1219,18 +1232,111 @@
         
         // Nieuwe logica voor de terugknop in de game
         document.getElementById('in-game-back-btn').addEventListener('click', () => {
+            pauzeerKlok(); // Tijd telt niet door terwijl je twijfelt
             confirmQuitScreen.classList.remove('hidden');
         });
 
         // Knoppen in de bevestigings-popup
         document.getElementById('cancel-quit-btn').addEventListener('click', () => {
             confirmQuitScreen.classList.add('hidden');
+            hervatKlok();
         });
 
         document.getElementById('confirm-quit-btn').addEventListener('click', () => {
             confirmQuitScreen.classList.add('hidden');
             returnToMenu();
         });
+
+        // --- STREAMING_CHUNK: Klok (stopwatch + tijdslimiet bij de Toets) ---
+
+        const SECONDEN_PER_ELEMENT = 8;           // Richtlijn: zoveel seconden per element bij de Toets
+        // Toetstijd = 8 sec per element, naar boven afgerond op een halve minuut (minimaal 1:00).
+        // Bijv. 6 elementen = 48 sec → 1:00, 11 elementen = 88 sec → 1:30
+        function toetsTijdMs(aantalElementen) {
+            const seconden = aantalElementen * SECONDEN_PER_ELEMENT;
+            return Math.max(60, Math.ceil(seconden / 30) * 30) * 1000;
+        }
+        const RECORDS_SLEUTEL = 'labmatch-records'; // Beste tijden per les, in milliseconden
+        let records = {};
+        try { records = JSON.parse(localStorage.getItem(RECORDS_SLEUTEL)) || {}; } catch (e) {}
+        function bewaarRecords() {
+            try { localStorage.setItem(RECORDS_SLEUTEL, JSON.stringify(records)); } catch (e) {}
+        }
+
+        let klokInterval = null;  // het setInterval dat de klok laat tikken
+        let klokStart = null;     // moment waarop de klok (opnieuw) is gestart, of null als hij stilstaat
+        let klokVerstreken = 0;   // al opgebouwde tijd in ms (handig voor pauzeren)
+        let klokLimiet = 0;       // 0 = stopwatch (optellen), anders: aftellen vanaf dit aantal ms
+        let tijdOp = false;       // true zodra de tijd van de toets op is
+
+        const klokEl = document.getElementById('ui-klok');
+        const klokTijdEl = document.getElementById('ui-klok-tijd');
+
+        // 83000 ms -> "1:23". Aftellen rondt naar boven af, optellen naar beneden (net als een echte klok)
+        function formatTijd(ms, omhoog = false) {
+            const totaal = Math.max(0, omhoog ? Math.ceil(ms / 1000) : Math.floor(ms / 1000));
+            return Math.floor(totaal / 60) + ':' + String(totaal % 60).padStart(2, '0');
+        }
+        function verstrekenTijd() {
+            return klokVerstreken + (klokStart ? performance.now() - klokStart : 0);
+        }
+
+        function startKlok(limietMs) {
+            stopKlok();
+            klokVerstreken = 0;
+            klokLimiet = limietMs;
+            tijdOp = false;
+            document.getElementById('ui-klok-label').innerText = limietMs ? '⏰ Toetstijd' : '⏱️ Tijd';
+            klokEl.classList.remove('hidden');
+            klokEl.classList.add('flex');
+            hervatKlok();
+        }
+        function pauzeerKlok() {
+            if (klokStart === null) return;
+            klokVerstreken += performance.now() - klokStart;
+            klokStart = null;
+            clearInterval(klokInterval);
+        }
+        function hervatKlok() {
+            if (klokStart !== null || tijdOp || !klokEl.classList.contains('flex')) return;
+            klokStart = performance.now();
+            klokInterval = setInterval(tikKlok, 200);
+            tikKlok();
+        }
+        // Stopt de klok en geeft de gebruikte tijd terug (in ms)
+        function stopKlok() {
+            pauzeerKlok();
+            return klokVerstreken;
+        }
+        function verbergKlok() {
+            stopKlok();
+            klokEl.classList.add('hidden');
+            klokEl.classList.remove('flex');
+        }
+
+        function tikKlok() {
+            const verstreken = verstrekenTijd();
+            if (klokLimiet === 0) {
+                klokTijdEl.innerText = formatTijd(verstreken);
+                klokTijdEl.classList.remove('klok-alarm');
+                return;
+            }
+            const over = klokLimiet - verstreken;
+            klokTijdEl.innerText = formatTijd(over, true);
+            klokTijdEl.classList.toggle('klok-alarm', over <= 10000);
+            if (over <= 0) toetsTijdOp();
+        }
+
+        function toetsTijdOp() {
+            stopKlok();
+            tijdOp = true;
+            isAnimating = true; // niets meer slepen
+            if (membraneSynth) membraneSynth.triggerAttackRelease('C2', '4n');
+            document.getElementById('game-over-title').innerText = '⏰ Tijd op!';
+            document.getElementById('game-over-text').innerText = 'De toets is niet gehaald. Oefen nog even en probeer het opnieuw!';
+            finalScoreSpan.innerText = score;
+            gameOverScreen.classList.remove('hidden');
+        }
 
         // Kies elementen uit je eigen selectie: die je het minst goed kent komen eerst
         function kiesEigenRonde() {
@@ -1245,6 +1351,16 @@
             lives = MAX_LEVENS;
             rondeIndex = 0;
             rondes = spelModus === 'eigen' ? [kiesEigenRonde()] : maakRondes(lesSyms(huidigGebied, huidigeLes));
+            isAnimating = false;
+
+            // Klok: alleen bij lessen uit de gebieden
+            if (spelModus === 'gebied') {
+                const isToets = huidigeLes === 2;
+                startKlok(isToets ? toetsTijdMs(lesSyms(huidigGebied, huidigeLes).length) : 0);
+            } else {
+                verbergKlok();
+                tijdOp = false;
+            }
             startRonde();
         }
 
@@ -1336,6 +1452,7 @@
         // --- STREAMING_CHUNK: Level rendering ---
 
         function startRonde() {
+            hervatKlok(); // na het "ronde klaar"-scherm loopt de klok weer
             matchedInLevel = 0;
             tubeRack.innerHTML = '';
             flaskTable.innerHTML = '';
@@ -1536,6 +1653,7 @@
         }
 
         function processDrop(tube, flask) {
+            if (tijdOp) { snapBack(tube); return; }
             isAnimating = true;
             const flaskRect = flask.getBoundingClientRect();
             const kleur = tube.dataset.color;
@@ -1757,9 +1875,18 @@
         }
 
         function checkLevelEnd() {
-            if (matchedInLevel !== huidigBord.length) return;
+            if (matchedInLevel !== huidigBord.length || tijdOp) return;
+
+            // Klok direct stilzetten, zodat het wachten op het scherm niet meetelt
+            const laatsteRonde = rondeIndex >= rondes.length - 1;
+            let gebruikteTijd = 0;
+            if (spelModus === 'gebied') {
+                if (laatsteRonde) gebruikteTijd = stopKlok();
+                else pauzeerKlok();
+            }
 
             setTimeout(() => {
+                if (tijdOp) return;
                 const verzamelTekst = `Je verzameling: <span class="text-yellow-400 font-bold">🏆 ${aantalVerzameld()} / ${alleSymbolen.length}</span>`;
 
                 // Eigen selectie: gewoon nog een ronde
@@ -1789,21 +1916,32 @@
                 levelSterren[sleutel] = Math.max(levelSterren[sleutel] || 0, lives);
                 bewaarLevels();
 
+                // Persoonlijk record: hoe sneller, hoe beter
+                const vorigRecord = records[sleutel];
+                const nieuwRecord = !vorigRecord || gebruikteTijd < vorigRecord;
+                if (nieuwRecord) { records[sleutel] = Math.round(gebruikteTijd); bewaarRecords(); }
+                const tijdTekst = `⏱️ Tijd: <b>${formatTijd(gebruikteTijd)}</b>`
+                    + (les === 2 ? ` (nog ${formatTijd(klokLimiet - gebruikteTijd, true)} over)` : '')
+                    + (nieuwRecord
+                        ? (vorigRecord ? ' · <span class="text-yellow-300 font-bold">🏅 Nieuw record!</span>' : ' · <span class="text-yellow-300 font-bold">🏅 Eerste record!</span>')
+                        : ` · Record: ${formatTijd(vorigRecord)}`)
+                    + '<br>';
+
                 if (les < 2) {
                     toonGehaaldScherm(`${LES_NAMEN[les]} gehaald! 🎉`, lives,
-                        `Score: <b>${score}</b><br>Op naar ${les === 0 ? 'Les 2' : 'de Toets'}!`,
+                        `${tijdTekst}Score: <b>${score}</b><br>Op naar ${les === 0 ? 'Les 2' : 'de Toets'}!`,
                         `Verder: ${LES_NAMEN[les + 1]} ▶`, () => toonLesIntro(g, les + 1));
                 } else if (isMeester() && !wasMeester) {
                     // Net de laatste toets gehaald: eindbeloning!
                     toonGehaaldScherm('👑 Meester-scheikundige! 👑', lives,
-                        `Je hebt alle ${gebieden.length} toetsen gehaald. Je kent het periodiek systeem als je broekzak!<br>${verzamelTekst}`,
+                        `${tijdTekst}Je hebt alle ${gebieden.length} toetsen gehaald. Je kent het periodiek systeem als je broekzak!<br>${verzamelTekst}`,
                         'Naar de kaart 🗺️', toonNiveauKeuze);
                 } else {
                     // Stel een gebied voor waarvan de toets nog niet gehaald is
                     const volgende = gebieden.findIndex((_, i) => !isGehaald(i, 2));
                     const nogTeGaan = gebieden.length - aantalToetsenGehaald();
                     toonGehaaldScherm(`${gebieden[g].icon} ${gebieden[g].naam} voltooid! ✅`, lives,
-                        (nogTeGaan > 0 ? `Nog <b>${nogTeGaan}</b> ${nogTeGaan === 1 ? 'gebied' : 'gebieden'} te gaan voor de titel 👑 Meester-scheikundige.<br>` : '') + verzamelTekst,
+                        tijdTekst + (nogTeGaan > 0 ? `Nog <b>${nogTeGaan}</b> ${nogTeGaan === 1 ? 'gebied' : 'gebieden'} te gaan voor de titel 👑 Meester-scheikundige.<br>` : '') + verzamelTekst,
                         volgende >= 0 ? `Naar ${gebieden[volgende].icon} ${gebieden[volgende].naam} ▶` : 'Naar de kaart 🗺️',
                         volgende >= 0 ? () => toonLesIntro(volgende, firstOpenLes(volgende)) : toonNiveauKeuze);
                 }
@@ -1811,6 +1949,10 @@
         }
 
         function gameOver() {
+            if (tijdOp) return; // het "Tijd op"-scherm staat er al
+            stopKlok();
+            document.getElementById('game-over-title').innerText = 'KABOEM!';
+            document.getElementById('game-over-text').innerText = 'Je veiligheidsbrillen zijn op...';
             isAnimating = false;
             finalScoreSpan.innerText = score;
             gameOverScreen.classList.remove('hidden');
